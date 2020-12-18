@@ -26,7 +26,7 @@ Class {
 	#classVars : [
 		'Icons'
 	],
-	#category : #'Morphic-Widgets-Tabs'
+	#category : #'Morphic-Widgets-Tabs-Morphs'
 }
 
 { #category : #icons }
@@ -85,7 +85,7 @@ TabMorph class >> closeOverIconContents [
 
 { #category : #accessing }
 TabMorph class >> defaultHeight [
-	^ 22 * self currentWorld displayScaleFactor 
+	^ 22
 ]
 
 { #category : #initialize }
@@ -697,8 +697,7 @@ TabMorph >> morph: anObject [
 
 { #category : #'event handling' }
 TabMorph >> mouseDown: event [
-
-	self flag: 'ToDo: Add drag'
+	self flag: #pharoTodo. "Add drag"
 ]
 
 { #category : #'icons-actions' }

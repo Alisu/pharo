@@ -16,18 +16,18 @@ ClyClassDefinitionEditorToolMorph >> applyChanges [
 	newClass := browser compileANewClassFrom: self pendingText asString notifying: textMorph startingFrom: editingClass.
 	newClass ifNil: [ ^false ].
 	
-	editingClass == newClass ifFalse: [ 
-		self removeFromBrowser].
+	editingClass == newClass 
+		ifFalse: [ self removeFromBrowser ].
 	browser selectClass: newClass.
 	^true
 	
 ]
 
-{ #category : #contexts }
+{ #category : #'to sort' }
 ClyClassDefinitionEditorToolMorph >> createTextContext [
 	^self selectedSourceNode
-		ifNil: [super createTextContext]
-		ifNotNil: [ :astNode | ClySourceCodeContext for: self selectedNode: astNode]
+		ifNil: [ super createTextContext ]
+		ifNotNil: [ :astNode | ClyClassDefinitionContext for: self selectedNode: astNode]
 ]
 
 { #category : #building }
@@ -36,8 +36,8 @@ ClyClassDefinitionEditorToolMorph >> decorateContainerTab [
 	super decorateContainerTab.
 	title := editingClass name.
 
-	editingClass isClassSide ifTrue: [ 
-		title := title asText allBold asStringMorph ].
+	editingClass isClassSide 
+		ifTrue: [ title := title asText allBold ].
 
 	containerTab label: title
 ]
@@ -47,17 +47,16 @@ ClyClassDefinitionEditorToolMorph >> defaultIconName [
 	^#classIcon
 ]
 
-{ #category : #accessing }
+{ #category : #'to sort' }
 ClyClassDefinitionEditorToolMorph >> editingText [
-	self flag: #todo.
-	^ editingClass definition
+	
+	^ editingClass definitionString
 ]
 
 { #category : #building }
 ClyClassDefinitionEditorToolMorph >> fillStatusBar [ 
 	super fillStatusBar.
-	
-	statusBar addCommandItem: (ClySlotClassDefinitionSwitchMorph for: self)
+	statusBar addCommandItem: (ClyFluidClassDefinitionSwitchMorph for: self)
 ]
 
 { #category : #testing }
@@ -66,9 +65,12 @@ ClyClassDefinitionEditorToolMorph >> isCommandAvailable: aCommand [
 	^ aCommand canBeExecutedInClassEditor: self
 ]
 
-{ #category : #accessing }
+{ #category : #'to sort' }
 ClyClassDefinitionEditorToolMorph >> parseClassDefinition [
-	^CDClassDefinitionParser parse: self editingText
+
+	self editingClass needsSlotClassDefinition 
+		ifTrue: [ ^ ClassDefinitionPrinter fluid classDefinitionParserClass parse: self editingText].
+	^ ClassDefinitionPrinter new classDefinitionParserClass parse: self editingText
 ]
 
 { #category : #'selecting text' }
@@ -98,7 +100,7 @@ ClyClassDefinitionEditorToolMorph >> selectedSourceNode [
 
 { #category : #initialization }
 ClyClassDefinitionEditorToolMorph >> setUpModelFromContext [
-	super setUpModelFromContext.
 
+	super setUpModelFromContext.
 	editingClass := context selectedClassSide
 ]

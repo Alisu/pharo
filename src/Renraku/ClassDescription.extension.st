@@ -28,17 +28,7 @@ ClassDescription >> banLevelCandidates [
 
 { #category : #'*renraku' }
 ClassDescription >> critiques [
-	<eProperty>
 	^ ReCriticEngine critiquesOf: self
-]
-
-{ #category : #'*renraku' }
-ClassDescription >> glmCritiqueSourceIn: composite [
-
-	^ composite pharoScript  
-		title: 'Source';
-		display: [ self definition ];
-		act: [ self browse ] icon: GLMUIThemeExtraIcons glamorousBrowse entitled: 'Browse'
 ]
 
 { #category : #'*renraku' }

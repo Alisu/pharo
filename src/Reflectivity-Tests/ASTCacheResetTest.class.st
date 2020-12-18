@@ -7,7 +7,7 @@ Class {
 		'link',
 		'node'
 	],
-	#category : #'Reflectivity-Tests'
+	#category : #'Reflectivity-Tests-Base'
 }
 
 { #category : #'tests - material' }
@@ -44,7 +44,7 @@ ASTCacheResetTest >> testCacheResetPreserveLinks [
 	self annotatedMethod.
 	self assert: counter equals: 1.
 	ASTCache reset.
-	self assert: (self class >> #annotatedMethod) ast statements last value links anyOne == link.
+	self assert: (self class >> #annotatedMethod) ast statements last value links anyOne identicalTo: link.
 	self annotatedMethod.
 	self assert: counter equals: 2
 ]

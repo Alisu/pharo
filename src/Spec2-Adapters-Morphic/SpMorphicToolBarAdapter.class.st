@@ -2,76 +2,81 @@
 I'm the adapter used to bridge a ToolBarPresenter and its morphic representation.
 "
 Class {
-	#name : #SpMorphicToolBarAdapter,
+	#name : #SpMorphicToolbarAdapter,
 	#superclass : #SpAbstractMorphicAdapter,
 	#category : #'Spec2-Adapters-Morphic-Base'
 }
 
 { #category : #factory }
-SpMorphicToolBarAdapter >> addModelTo: toolBarMorph [
+SpMorphicToolbarAdapter >> addModelTo: toolBarMorph [
 
-	toolBarMorph displayMode: self model displayMode. 
-	toolBarMorph height: self model displayMode height.
-	toolBarMorph setBalloonText: self model help.
+	toolBarMorph
+		displayMode: self presenter displayMode;
+		height: self presenter displayMode height;
+		setBalloonText: self presenter help.
 
-	self model whenItemsChangeDo: [self updateItems: toolBarMorph].
+	self presenter whenItemsChangeDo: [ self updateItems: toolBarMorph ].
 
-	self updateItems: toolBarMorph.
+	self updateItems: toolBarMorph
 ]
 
 { #category : #factory }
-SpMorphicToolBarAdapter >> buildWidget [
+SpMorphicToolbarAdapter >> buildWidget [
+
 	| toolBarMorph |
-	
-	toolBarMorph := SpToolBarMorph new.
+	toolBarMorph := SpToolbarMorph new.
 	self addModelTo: toolBarMorph.
-	
+
 	^ toolBarMorph
 ]
 
 { #category : #factory }
-SpMorphicToolBarAdapter >> configureItem: itemModel morph: itemMorph toolBar: toolBarMorph [
+SpMorphicToolbarAdapter >> configureItem: itemModel morph: itemMorph toolBar: toolBarMorph [
 	
 	itemMorph 
 		font: toolBarMorph toolbarItemFont;
-		width: toolBarMorph toolbarItemSize.
+		minWidth: toolBarMorph displayMode width.
 	
 	toolBarMorph displayMode 
-		configureButton: itemMorph 
+		configureMorph: itemMorph 
 		item: itemModel.
 		
 	^ itemMorph
 ]
 
 { #category : #testing }
-SpMorphicToolBarAdapter >> hasButtonWithLabel: aString [
+SpMorphicToolbarAdapter >> hasButtonWithLabel: aString [
 
 	^ (self widget leftPanel submorphs , self widget rightPanel submorphs)
-		detect: [ :e | (e isKindOf: SpToolBarButtonMorph) and: [ e label = aString ] ]
+		detect: [ :e | (e isKindOf: SpToolbarButtonMorph) and: [ e label = aString ] ]
 		ifFound: [ true ]
 		ifNone: [ false ]
 ]
 
 { #category : #testing }
-SpMorphicToolBarAdapter >> numberOfItems [
+SpMorphicToolbarAdapter >> numberOfItems [
 	
 	^ self widget leftPanel submorphs size + self widget rightPanel submorphs size
 ]
 
 { #category : #factory }
-SpMorphicToolBarAdapter >> updateItems: toolBarMorph [
+SpMorphicToolbarAdapter >> updateItems: toolBarMorph [
 
 	toolBarMorph clearItems.
 
-	self model leftItems do: [ :each | 
-		toolBarMorph addItemLeft: (self 
-			configureItem: each 
-			morph: each buildWithSpec 
-			toolBar: toolBarMorph) ].
+	self presenter leftItems do: [ :each | 
+		toolBarMorph 
+			addItem: (self 
+				configureItem: each 
+				morph: each buildWithSpec 
+				toolBar: toolBarMorph)
+			position: SpToolbarItemPosition left ].
 
-	self model rightItems do: [ :each | 
-		toolBarMorph addItemRight: (self 
-			configureItem: each 
-			morph: each buildWithSpec 
-			toolBar: toolBarMorph) ]
+	self presenter rightItems do: [ :each | 
+		toolBarMorph 
+			addItem: (self 
+				configureItem: each 
+				morph: each buildWithSpec 
+				toolBar: toolBarMorph)
+			position: SpToolbarItemPosition right ]
 ]

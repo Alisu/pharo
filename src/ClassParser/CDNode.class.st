@@ -12,12 +12,13 @@ Class {
 	#instVars : [
 		'parent',
 		'originalNode',
-		'children'
+		'children',
+		'tokens'
 	],
 	#category : #'ClassParser-Model'
 }
 
-{ #category : #'instance-creation' }
+{ #category : #'instance creation' }
 CDNode class >> on: aRBMessageNode [ 
 	
 	^ self new
@@ -85,7 +86,7 @@ CDNode >> hasExecutionCounter [
 ]
 
 { #category : #compatibility }
-CDNode >> hasWatchpoint [
+CDNode >> hasWatch [
 	
 	^ false
 ]
@@ -168,13 +169,12 @@ CDNode >> stop [
 	^ originalNode stop
 ]
 
-{ #category : #'to be removed once CDNode get subclass of RBProgramNode' }
-CDNode >> suggestions [
-	^SugsSuggestion for: self class
+{ #category : #accessing }
+CDNode >> tokens [ 
+	^ tokens
 ]
 
-{ #category : #'to be moved to sugs' }
-CDNode >> sugsMenuLabel [
-
-	^ 'CDNode'
+{ #category : #accessing }
+CDNode >> tokens: aCollectionOfTokens [
+	tokens := aCollectionOfTokens
 ]

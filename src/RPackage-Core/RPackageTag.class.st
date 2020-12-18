@@ -79,13 +79,13 @@ RPackageTag >> ensureSystemCategory [
 ]
 
 { #category : #accessing }
-RPackageTag >> extensionCategoriesForClass: aClass [ 
-	^ self package extensionCategoriesForClass: aClass
+RPackageTag >> extendedClasses [
+	^ #()
 ]
 
 { #category : #accessing }
-RPackageTag >> extensionClasses [ 
-	^ #()
+RPackageTag >> extensionCategoriesForClass: aClass [ 
+	^ self package extensionCategoriesForClass: aClass
 ]
 
 { #category : #testing }
@@ -147,7 +147,7 @@ RPackageTag >> name [
 
 { #category : #accessing }
 RPackageTag >> orderedClasses [
-^ self package orderedClasses select:[:c | c category = self categoryName]
+	^ self package orderedClasses select:[:c | c category = self categoryName]
 ]
 
 { #category : #accessing }

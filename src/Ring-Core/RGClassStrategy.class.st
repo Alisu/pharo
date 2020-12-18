@@ -44,7 +44,7 @@ RGClassStrategy >> allClassVariables [
 
 	^ ((self owner superclass == nil) or: [ self owner superclass == self owner]) 
 		ifTrue: [ self classVariables ]
-		ifFalse: [ self owner superclass allClassVariables, classVariables ]
+		ifFalse: [ self owner superclass allClassVariables, self classVariables ]
 ]
 
 { #category : #'private - backend access' }
@@ -99,7 +99,7 @@ RGClassStrategy >> classSide [
 { #category : #'private - backend access' }
 RGClassStrategy >> classVarNames [
 
-	^ self classVariables collect: #name
+	^ self classVariables collect: [:each | each name]
 ]
 
 { #category : #'class variables' }
@@ -110,20 +110,17 @@ RGClassStrategy >> classVariableDefinitionString [
 		str nextPutAll: '{ '.
 		self owner classVariables do: [:global |
 				str nextPutAll: global definitionString.
-				special := global isSpecial]				
+				special := global needsFullDefinition]				
 			separatedBy: [ 
-				str nextPutAll: '. '.  
+				str nextPutAll: ' . '.  
 				special ifTrue: [ str cr;tab;tab;tab;tab ]].
 		str nextPutAll: ' }'. ]
 ]
 
 { #category : #'private - backend access' }
 RGClassStrategy >> classVariables [
-
-	| allClassVariables |
-	allClassVariables := OrderedCollection new.
-	self classVariablesDo: [ :each | allClassVariables add: each].
-	^ allClassVariables asArray
+	
+	^ Array streamContents: [ :str | self classVariablesDo: [ :each | str nextPut: each ] ]
 ]
 
 { #category : #'private - backend access' }
@@ -171,17 +168,12 @@ RGClassStrategy >> comment: anRGComment [
 RGClassStrategy >> copyForBehaviorDefinitionPostCopy [
 
 	| newVariables newSharedPools |
-	
 	self owner behaviorStrategy: self.
-	
 	super copyForBehaviorDefinitionPostCopy.
-	
 	newVariables := self classVariables collect: [ :each | each copyWithParent: self owner].
 	newSharedPools := self sharedPools collect: [ :each | each shallowCopy. ].
-
 	self pvtCleanClassVariables.
 	self pvtCleanSharedPools.
-	
 	newVariables do: [ :each | self privAddClassVariable: each ].
 	newSharedPools do: [ :each | self privAddSharedPool: each ].
 
@@ -230,7 +222,7 @@ RGClassStrategy >> definition [
 
 	| aStream poolString |
 	
-	self owner usesSpecialSlot 
+	self owner slotsNeedFullDefinition 
 		ifTrue: [ ^ self definitionWithSlots ].
 		
 	poolString := self owner sharedPoolsString.
@@ -563,7 +555,7 @@ RGClassStrategy >> sharedPools [
 		each isSymbol 
 			ifTrue: [ self environment ask behaviorNamed: each name ]
 			ifFalse: [ 
-				(each isVariableDefinition and: [each isPoolVariable ])
+				(each isVariable and: [each isPoolVariable ])
 					ifTrue: [ 
 						| beh | 
 						beh := self environment ask behaviorNamed: each name.

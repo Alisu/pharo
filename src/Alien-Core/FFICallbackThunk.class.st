@@ -37,13 +37,12 @@ FFICallbackThunk class >> dataSize [
 { #category : #'class initialization' }
 FFICallbackThunk class >> ensureNotifiedAtStartup [
 	"FFICallbackThunk needs to be notified at system startup to clear the ExecutablePages table."
-	self ~~ FFICallbackThunk ifTrue: [^self].
-	(Smalltalk classNamed: #SessionManager)
-		ifNotNil: [:sessionManagerClass|
-			sessionManagerClass default
-				registerSystemClassNamed: self name
-				atPriority: 60]
-		ifNil: [Smalltalk addToStartUpList: self after: Alien]
+
+	self ~~ FFICallbackThunk ifTrue: [ ^ self ].
+
+	SessionManager default
+		registerSystemClassNamed: self name
+		atPriority: 60
 ]
 
 { #category : #finalization }
@@ -148,7 +147,7 @@ FFICallbackThunk >> initialize [
 	['X64Win64']	->	[self initializeX64Win64] }
 ]
 
-{ #category : #'instance initalization' }
+{ #category : #'instance initialization' }
 FFICallbackThunk >> initializeARM32 [
 	"Initialize the receiver with a __ccall thunk.  The thunk calls thunkEntry in the Alien/IA32ABI plugin,
 	 whose source is in platforms/Cross/plugins/IA32ABI/arm32abicc.c.  thunkEntry is the entry point
@@ -189,14 +188,14 @@ FFICallbackThunk >> initializeARM32 [
 	"self newCCall"
 ]
 
-{ #category : #'instance initalization' }
+{ #category : #'instance initialization' }
 FFICallbackThunk >> initializeStdcall: bytes [
 	"Initialize the receiver with a __stdcall thunk with bytes argument bytes."
 	Callback abi caseOf: {
 	['IA32']		->	[self initializeX86Stdcall: bytes] }
 ]
 
-{ #category : #'instance initalization' }
+{ #category : #'instance initialization' }
 FFICallbackThunk >> initializeX64 [
 	"Initialize the receiver with a __ccall thunk.  The thunk calls thunkEntry in the Alien/IA32ABI plugin,
 	 whose source is in platforms/Cross/plugins/IA32ABI/x64sysvabicc.c.  thunkEntry is the entry point
@@ -235,7 +234,7 @@ FFICallbackThunk >> initializeX64 [
 	"self newCCall"
 ]
 
-{ #category : #'instance initalization' }
+{ #category : #'instance initialization' }
 FFICallbackThunk >> initializeX64Win64 [
 	"Initialize the receiver with a __ccall thunk.  The thunk calls thunkEntry in the Alien/IA32ABI plugin,
 	 whose source is in platforms/Cross/plugins/IA32ABI/x64win64abicc.c.  thunkEntry is the entry point
@@ -275,7 +274,7 @@ FFICallbackThunk >> initializeX64Win64 [
 	"self newCCall"
 ]
 
-{ #category : #'instance initalization' }
+{ #category : #'instance initialization' }
 FFICallbackThunk >> initializeX86 [
 	"Initialize the receiver with a __ccall thunk.  The thunk calls thunkEntry in the Alien/IA32ABI plugin,
 	 whose source is in platforms/Cross/plugins/IA32ABI/x64win64abicc.c.  thunkEntry is the entry point
@@ -310,7 +309,7 @@ FFICallbackThunk >> initializeX86 [
 		unsignedLongAt: 21 put: 16r9090C30C
 ]
 
-{ #category : #'instance initalization' }
+{ #category : #'instance initialization' }
 FFICallbackThunk >> initializeX86Stdcall: bytes [
 	"Initialize the receiver with a __stdcall thunk with bytes argument bytes. (See initializeX86 fort more info)"
 	"thunk:		push   %esp				0x54							0xa1905454

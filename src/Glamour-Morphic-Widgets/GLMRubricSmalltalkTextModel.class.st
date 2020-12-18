@@ -55,19 +55,9 @@ GLMRubricSmalltalkTextModel >> formatSourceCode [
 ]
 
 { #category : #bindings }
-GLMRubricSmalltalkTextModel >> guessTypeForName: aString [ 
-	^ nil
-]
-
-{ #category : #bindings }
 GLMRubricSmalltalkTextModel >> hasBindingOf: aSymbol [
 
 	^ self variableBindings includesKey: aSymbol
-]
-
-{ #category : #bindings }
-GLMRubricSmalltalkTextModel >> hasBindingThatBeginsWith: aString [
-	^ self variableBindings keys anySatisfy: [:each | each beginsWith: aString]
 ]
 
 { #category : #shout }
@@ -104,8 +94,7 @@ GLMRubricSmalltalkTextModel >> selectedClassOrMetaClass [
 
 { #category : #accessing }
 GLMRubricSmalltalkTextModel >> selectedMethod [
-
-	^ self doItContext ifNil: [ nil ] ifNotNil: [ :aContext | aContext method ]
+	^ self doItContext ifNotNil: [ :aContext | aContext method ]
 ]
 
 { #category : #shout }

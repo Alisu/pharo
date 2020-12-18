@@ -8,22 +8,25 @@ Class {
 		'surface',
 		'drawBlock'
 	],
-	#category : #'Spec2-Adapters-Morphic-Notebook'
+	#category : #'Spec2-Adapters-Morphic-Base'
 }
 
 { #category : #accessing }
 SpAthensMorph >> drawBlock: aBlockClosure [
+
 	drawBlock := aBlockClosure
 ]
 
-{ #category : #accessing }
+{ #category : #drawing }
 SpAthensMorph >> drawOn: aMorphicCanvas [
+
 	self redraw.
 	self surface displayOnMorphicCanvas: aMorphicCanvas at: bounds origin
 ]
 
 { #category : #drawing }
 SpAthensMorph >> redraw [
+
 	self surface drawDuring: [ :canvas | drawBlock cull: canvas ]
 ]
 

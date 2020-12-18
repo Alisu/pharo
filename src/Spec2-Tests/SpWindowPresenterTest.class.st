@@ -1,6 +1,6 @@
 Class {
 	#name : #SpWindowPresenterTest,
-	#superclass : #SpTest,
+	#superclass : #SpSpecTest,
 	#category : #'Spec2-Tests-Core'
 }
 
@@ -37,6 +37,17 @@ SpWindowPresenterTest >> testIsClosed [
 ]
 
 { #category : #tests }
+SpWindowPresenterTest >> testIsTopWindow [
+
+	self deny: presenter isTopWindow.
+	self openInstance.
+	presenter takeKeyboardFocus.
+	self assert: presenter isTopWindow.
+	presenter close.
+	self deny: presenter isTopWindow
+]
+
+{ #category : #tests }
 SpWindowPresenterTest >> testWhenClosedDo [
 	| closed |
 	closed := false.
@@ -58,6 +69,7 @@ SpWindowPresenterTest >> testWhenOpenedDo [
 { #category : #tests }
 SpWindowPresenterTest >> testWhenWillCloseDo [
 	| willClose closed |
+
 	willClose := false.
 	closed := false.
 	presenter whenWillCloseDo: [ willClose := true ].

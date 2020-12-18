@@ -143,27 +143,6 @@ ClyFullBrowser class >> taskbarIconName [
 	^#smallSystemBrowser
 ]
 
-{ #category : #'world menu' }
-ClyFullBrowser class >> worldMenuOn: aBuilder [ 
-	<worldMenu> 
-	| isDefaultBrowser target targetName |
-	(self environment hasClassNamed: #Nautilus) ifFalse: [^self].
-	
-	isDefaultBrowser := Smalltalk tools browser = self.
-	(isDefaultBrowser and: [ self environment hasClassNamed: #Nautilus ])
-		ifTrue: [ 
-			target := self environment classNamed: #Nautilus.
-			targetName := target name ]
-		ifFalse: [ 
-			target := self.
-			targetName := 'Calypso' ].
-	(aBuilder item: (targetName, ' browser') asSymbol)	
-		order: 0.5;
-		help: targetName, ' browser';
-		icon: (self iconNamed: #nautilus);
-		action: [ target open ]
-]
-
 { #category : #private }
 ClyFullBrowser >> adoptForExtendedClass [
 	| extendingPackages extraGroups |
@@ -305,7 +284,7 @@ ClyFullBrowser >> compileANewClassFrom: aString notifying: aController startingF
 
 { #category : #'accessing context' }
 ClyFullBrowser >> createCommandContext [
-	^ClyGlobalContextOfFullBrowser for: self
+	^ClyFullBrowserGlobalContext for: self
 ]
 
 { #category : #'accessing context' }
@@ -460,13 +439,12 @@ ClyFullBrowser >> methodSelection [
 
 { #category : #'accessing selection' }
 ClyFullBrowser >> methodSelectionChanged [
-
 	| actualMethods |
+
 	actualMethods := self methodSelection actualObjects.
-	
 	methodGroupView highlightItemsWhich: [ :eachGroup | 
-		actualMethods anySatisfy: [:eachMethod | 
-			eachGroup actualObject includesMethod: eachMethod]]
+		actualMethods anySatisfy: [ :eachMethod |
+			eachGroup actualObject includesMethod: eachMethod ] ]
 ]
 
 { #category : #'accessing view' }
@@ -494,15 +472,17 @@ ClyFullBrowser >> newClassView [
 	"Creates the class pane"
 
 	^ self newNavigationView
-		displayMainColumnBy: [ :cell :item | 
+		displayMainColumnBy: [ :cell :item |
+			cell useFullIndentation.
 			self specifyClassItemNameOn: cell label for: item browserItem];
 		enableFilter;
+		enableCollapsingOfPreexpandedItems;
 		requestNavigationBy: #classSelectionChanged	
 ]
 
 { #category : #initialization }
 ClyFullBrowser >> newMethodGroupView [
-	"Creates the 'method group' pane (this is the protocol [ane])"
+	"Creates the 'method group' pane (formerly the 'protocol' pane)"
 
 	^ self newNavigationView
 		treeStructure: { 

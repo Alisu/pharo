@@ -76,6 +76,11 @@ UndefinedObject >> classInstaller [
 	^ Smalltalk classInstaller 
 ]
 
+{ #category : #'class hierarchy' }
+UndefinedObject >> commonSuperclassWith: aClass [ 
+	^ self
+]
+
 { #category : #copying }
 UndefinedObject >> deepCopy [
 	"Only one instance of UndefinedObject should ever be made, so answer 
@@ -84,26 +89,31 @@ UndefinedObject >> deepCopy [
 
 { #category : #'reflective operations' }
 UndefinedObject >> doesNotUnderstand: aMessage [
-	<debuggerCompleteToSender>
-	"Handle the fact that there was an attempt to send the given message to an Undeclared variable (nil), hence the receiver does not understand this message (typically #new)."
-	"Testing: (3 activeProcess)"
 
+	"Handle the fact that there was an attempt to send the given message to an Undeclared variable (nil), hence the receiver does not understand this message (typically #new)."
+
+	"Testing: (nil activeProcess)"
+
+	<debuggerCompleteToSender>
 	| exception resumeValue node |
-	
-	(node := self findUndeclaredVariableIn: thisContext sender sourceNodeExecuted) ifNil: [ 
-		 ^super doesNotUnderstand: aMessage ].
-				
+	[ 
+	node := self findUndeclaredVariableIn:
+		        thisContext sender sourceNodeExecuted ] onErrorDo: [ :ex | 
+				"This is ugly, but we have a dependency with Opal compiler and 
+				it should be extracted. If there is a failure during the bootstrap, this
+				dependency produces an infinite loop"
+		 ].
+	node ifNil: [ ^ super doesNotUnderstand: aMessage ].
+
 	(exception := VariableNotDeclared new)
-			message: aMessage;
-			variableNode: node;
-			receiver: self.
-			
+		message: aMessage;
+		variableNode: node;
+		receiver: self.
+
 	resumeValue := exception signal.
 	^ exception reachedDefaultHandler
-			ifTrue: [ aMessage sentTo: self ]
-			ifFalse: [ resumeValue ] .
-			
-	
+		  ifTrue: [ aMessage sentTo: self ]
+		  ifFalse: [ resumeValue ]
 ]
 
 { #category : #'class hierarchy' }
@@ -118,10 +128,7 @@ UndefinedObject >> findUndeclaredVariableIn: ast [
 	"Walk the ast of the current statment and find the undeclared variable node, or nil (if none).
 	Assumes there is only one such variable in an executing statement"
 	
-	ast nodesDo: [:node |
-		(node isVariable and: [ node isUndeclared]) ifTrue: [ ^node ]].
-
-	^nil
+	^ast variableNodes detect: [:node | node isUndeclaredVariable] ifNone: [ nil ]
 ]
 
 { #category : #testing }
@@ -238,7 +245,7 @@ UndefinedObject >> subclass: nameOfClass
 	poolDictionaries: poolDictnames
 	category: category [
 	"Calling this method is now considered an accident.  If you really want to create a class with a nil superclass, then create the class and then set the superclass using #superclass:"
-	self traceCr: ('Attempt to create ', nameOfClass, ' as a subclass of nil.  Possibly a class is being loaded before its superclass.').
+	Warning signal: ('Attempt to create ', nameOfClass, ' as a subclass of nil.  Possibly a class is being loaded before its superclass.').
 	^ Object
 		subclass: nameOfClass
 		instanceVariableNames: instVarNameList

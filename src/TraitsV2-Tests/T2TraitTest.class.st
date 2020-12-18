@@ -92,6 +92,19 @@ T2TraitTest >> testClassTraits [
 ]
 
 { #category : #tests }
+T2TraitTest >> testClassUsesTrait [
+	| t1 superclass subclass |
+	t1 := self newTrait: #T1 with: {}.
+	superclass := self newClass: #Superclass with:#() uses: t1.
+	subclass := self newClass: #Subclass superclass: superclass with: #() uses: {}.
+	
+	self assert: (superclass usesTrait: t1).
+	self assert: (superclass usesTraitLocally: t1).
+	self assert: (subclass usesTrait: t1).
+	self assert: (subclass usesTraitLocally: t1) not.
+]
+
+{ #category : #tests }
 T2TraitTest >> testClassUsingTraitsDoesNotHaveUsers [
 	| t1 aClass |
 
@@ -229,6 +242,20 @@ T2TraitTest >> testRemovingTraitsRemoveTraitedClassMethodsWithSubclasses [
 ]
 
 { #category : #tests }
+T2TraitTest >> testRemovingTraitsUpdatesCategories [
+	| t1 t2 c1 |
+	
+	t1 := self createT1.
+	t2 := self createT2.
+	c1 := self newClass: #C1 with: 'g h' asSlotCollection uses: t1 + t2.
+	c1 := self newClass: #C1 with: 'g h' asSlotCollection uses: {}.		
+
+	c1 organization allMethodSelectors do: [:each | self assert: (c1 includesSelector: each) ].
+	c1 class organization allMethodSelectors do: [:each | 
+		self assert: (c1 class includesSelector: each) ]
+]
+
+{ #category : #tests }
 T2TraitTest >> testSelectorsWithExplicitOrigin [
 	"Obtain the subset of selectors that are defined either locally or inherited from traits. But, exclude selectors of methods from implicit traits such as TraitedClass"
 	| t1 c1 |
@@ -271,6 +298,17 @@ T2TraitTest >> testSequence [
 	
 	self assert: obj getValues equals: 6.
 	self assert: obj getValues2 equals: 12
+]
+
+{ #category : #tests }
+T2TraitTest >> testSettingAClassInAClassTraitCompositionShouldRaiseAnError [
+
+	| t1 c1 |
+	t1 :=  self newTrait: #T1 with: 'a' asSlotCollection.
+	c1 := self newClass: #C1 with: '' asSlotCollection uses: #().
+
+	self should: [ t1 traitComposition: c1 ] raise: Error.
+	self should: [ t1 classTrait traitComposition: c1 ] raise: Error.	
 ]
 
 { #category : #tests }

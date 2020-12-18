@@ -59,6 +59,7 @@ PasteUpMorph class >> shouldShowWorldMenuSettingOn: aBuilder [
 	<systemsettings>
 	(aBuilder setting: #shouldShowWorldMenu)
 		target: self;
+		default: true;
 		parent: #morphic;
 		label: 'Show world menu';
 		description: 'Whether the World''s world menu should be shown or not on a click in the World.'
@@ -97,7 +98,7 @@ PasteUpMorph >> acceptDroppingMorph: dropped event: evt [
 	super acceptDroppingMorph: aMorph event: evt.
 	aMorph
 		submorphsDo: [ :m | 
-			(m isKindOf: HaloMorph)
+			m isHaloMorph
 				ifTrue: [ m delete ] ].
 	self bringTopmostsToFront
 ]
@@ -224,11 +225,11 @@ PasteUpMorph >> cleanseOtherworldlySteppers [
 	those morphs that are not really in the world"
 	"Utilities cleanseOtherworldlySteppers"
 	| old delta |
-	old := self currentWorld stepListSize.
-	self currentWorld steppingMorphsNotInWorld
+	old := self world stepListSize.
+	self world steppingMorphsNotInWorld
 		do: [:m | m delete].
-	self currentWorld cleanseStepList.
-	(delta := old - self currentWorld stepListSize) > 0
+	self world cleanseStepList.
+	(delta := old - self world stepListSize) > 0
 		ifTrue: [ self crTrace: delta asString , ' morphs removed from steplist' ]
 ]
 
@@ -240,7 +241,7 @@ PasteUpMorph >> closeAllUnchangedWindows [
 
 { #category : #'Morphic-Base-Windows' }
 PasteUpMorph >> closeAllWindowsDiscardingChanges [
-	self currentWorld systemWindows do: [:w | [w delete] valueSupplyingAnswer: false]
+	self world systemWindows do: [:w | [w delete] valueSupplyingAnswer: false]
 ]
 
 { #category : #'Morphic-Base-Windows' }
@@ -440,7 +441,7 @@ PasteUpMorph >> dropFiles: anEvent [
 	numFiles := anEvent contents.
 	1 to: numFiles do: [ :i | 
 		| aFileReference handler |
-		aFileReference := FileReference requestDropReference: i.
+		aFileReference := anEvent requestDropReference: i.
 		handler := ExternalDropHandler
 			lookupExternalDropHandler: aFileReference.
 		handler
@@ -599,23 +600,6 @@ PasteUpMorph >> griddingString [
 		, 'use gridding' translated
 ]
 
-{ #category : #'world state' }
-PasteUpMorph >> handleFatalDrawingError: errMsg [
-	"Handle a fatal drawing error."
-	Display deferUpdates: false. "Just in case"
-	self primitiveError: errMsg.
-
-	"Hm... we should jump into a 'safe' worldState here, but how do we find it?!"
-]
-
-{ #category : #recategorized }
-PasteUpMorph >> handlerForMouseDown: anEvent [
-	"If we have a modal dialog then answer nil otherwise as usual.."
-	
-	^(self hasProperty: #submorphLockStates)
-		ifFalse: [super handlerForMouseDown: anEvent]
-]
-
 { #category : #'event handling' }
 PasteUpMorph >> handlesKeyboard: evt [
 	^ true "handle all not handled events"
@@ -673,7 +657,7 @@ PasteUpMorph >> invokeWorldMenu: evt [
 
 { #category : #'world menu' }
 PasteUpMorph >> invokeWorldMenuFromEscapeKey [
-	self invokeWorldMenu: ActiveEvent
+	self invokeWorldMenu: self activeHand lastEvent
 ]
 
 { #category : #cursor }
@@ -909,7 +893,7 @@ PasteUpMorph >> resizeToFitString [
 { #category : #'world state' }
 PasteUpMorph >> restoreDisplay [
 
-	self currentWorld restoreMorphicDisplay.	"I don't actually expect this to be called"
+	self world restoreMorphicDisplay.	"I don't actually expect this to be called"
 ]
 
 { #category : #'world state' }
@@ -927,7 +911,7 @@ PasteUpMorph >> setGridSpec [
 			request: 'New grid origin (usually 0@0):' translated
 			initialAnswer: self gridOrigin printString.
 	response isEmpty ifTrue: [^ self].
-	result := [self class compiler evaluate: response] ifError: [^ self].
+	result := [self class compiler evaluate: response] onErrorDo: [^ self].
 	(result isPoint and: [(result >= (0@0))])
 		ifTrue: [self gridOrigin: result]
 		ifFalse: [self inform: ('Must be a Point with coordinates (for example 10@10)' translated )].
@@ -936,7 +920,7 @@ PasteUpMorph >> setGridSpec [
 			request: 'New grid spacing:' translated
 			initialAnswer: self gridModulus printString.
 	response isEmptyOrNil ifTrue: [^ self].
-	result := [self class compiler evaluate: response] ifError: [^ self].
+	result := [self class compiler evaluate: response] onErrorDo: [^ self].
 	(result isPoint and: [(result > (0@0)) ])
 		ifTrue: [self gridModulus: result]
 		ifFalse: [self inform: ('Must be a Point with coordinates (for example 10@10)' translated )].
@@ -986,7 +970,7 @@ PasteUpMorph >> toggleResizeToFit [
 PasteUpMorph >> useRoundedCorners [
 	"Somewhat special cased because we do have to fill Display for this"
 	super useRoundedCorners.
-	self == self currentWorld ifTrue:[Display bits primFill: 0]. "done so that we *don't* get a flash"
+	self == self world ifTrue:[Display bits primFill: 0]. "done so that we *don't* get a flash"
 ]
 
 { #category : #'project state' }

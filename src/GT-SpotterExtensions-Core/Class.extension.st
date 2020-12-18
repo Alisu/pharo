@@ -4,7 +4,7 @@ Extension { #name : #Class }
 Class >> definitionForSpotter [
 	| str |
 	str := WriteStream on: String new.
-	str nextPutAll: self definition.
+	str nextPutAll: self definitionString.
 	str cr; cr.
 	str nextPut: $".
 	str nextPutAll: 'Hierarchy: '.
@@ -43,11 +43,11 @@ Class >> spotterMethodsFor: aStep [
 ]
 
 { #category : #'*GT-SpotterExtensions-Core' }
-Class >> spotterPreviewCodeIn: aComposite [
+Class >> spotterPreviewIn: aComposite [
 	<spotterPreview: 10>
 	aComposite pharoMethod
 		title: [self name];
-		display: #definition;
+		display: [:each | each definitionString];
 		smalltalkClass: [ nil ];
 		entity: self.
 		
@@ -59,7 +59,7 @@ Class >> spotterReferenceFor: aStep [
 	<spotterOrder: 30>
 	aStep listProcessor
 			title: 'References';
-			allCandidates: [ (SystemNavigation default allReferencesTo: self binding) collect: #compiledMethod ];
+			allCandidates: [ (SystemNavigation default allReferencesTo: self binding) collect: [:each | each compiledMethod ] ];
 			itemName: [ :method | method gtDisplayString ];
 			filter: GTFilterSubstring
 ]

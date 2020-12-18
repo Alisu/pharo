@@ -1,4 +1,10 @@
 "
+I keep information about the critiques that exist on certain entities.
+I'm invoked usually as follows:
+	
+	Point critiques
+	(Point >> #degrees) critiques
+	
 I contain some functionality shared between code entities
 "
 Class {
@@ -60,7 +66,7 @@ ReCriticEngine >> critiquesOf: anEntity [
 				ReExceptionStrategy current
 					handle: er
 					about: anEntity
-					forProppertiesDo: [ :prop |
+					forPropertiesDo: [ :prop |
 						critiques add: prop ] ].
 			Processor yield ].
 	
@@ -77,7 +83,7 @@ ReCriticEngine >> guidedBy: anEntity ban: aCritique [
 	candidates := anEntity banLevelCandidates.
 	
 	(UIManager default
-		chooseFrom: (candidates collect: #reBanName)
+		chooseFrom: (candidates collect: [:each | each reBanName])
 		values: candidates
 		title: 'On which level do you want to ban the rule?')
 			ifNotNil: [ :entity | entity ban: aCritique ]
@@ -106,9 +112,12 @@ ReCriticEngine >> nodeCritiquesOf: aMethod [
 			[ aMethod banChecksForValidation
 				anySatisfy: [ :banLevel |
 					builder bansRule: rule for: banLevel ] ] ].
-		
-		aMethod ast nodesDo: [ :node |
-			rules do: [ :rule |
+		rules do: [ :rule |
+			| ast |
+			ast := aMethod ast.
+			"for rewrite rules, we run every rule on a copy of the ast"
+			rule isRewriteRule ifTrue: [ ast := ast copy  ].
+			ast nodesDo: [ :node |
 			[
 			  rule
 				  check: node
@@ -120,7 +129,7 @@ ReCriticEngine >> nodeCritiquesOf: aMethod [
 				ReExceptionStrategy current
 					handle: er
 					about: aMethod
-					forProppertiesDo: [ :prop |
+					forPropertiesDo: [ :prop |
 						critiques add: prop ] ].
 			Processor yield ] ].
 	

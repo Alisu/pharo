@@ -412,7 +412,7 @@ MCGitBasedNetworkRepository >> flushCache [
 	[ localRepository flushCache ]
 	on: Error
 	do: [ :ex | 
-		self crTrace: 'Error for: ' , self description printString , ' during flushCache: ', ex description printString ].
+		SystemNotification signal: 'Error for: ' , self description printString , ' during flushCache: ', ex description printString ].
 	self class flushDownloadCache.
 	
 	directory := self calculateRepositoryDirectory.
@@ -614,8 +614,7 @@ MCGitBasedNetworkRepository >> resolveLocalRespository [
   
 	directory := self calculateRepositoryDirectory.
 	directoryPath := MCFileTreeFileUtils current directoryPathString: directory.
-	directory exists ifFalse: [ 
-		self error: 'Local directory ', directoryPath, ' does not exist.' ].
+	directory ifAbsent: [ self error: 'Local directory ', directoryPath, ' does not exist.' ].
 	localRepository := MetacelloPlatform current createRepository: (MetacelloRepositorySpec new 
 		description: 'filetree://', directoryPath;
 		yourself)

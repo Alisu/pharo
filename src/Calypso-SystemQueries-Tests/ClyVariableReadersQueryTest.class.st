@@ -1,9 +1,6 @@
 Class {
 	#name : #ClyVariableReadersQueryTest,
 	#superclass : #ClyVariableReferencesTestCase,
-	#instVars : [
-		'var2'
-	],
 	#category : #'Calypso-SystemQueries-Tests-Queries'
 }
 
@@ -49,13 +46,10 @@ ClyVariableReadersQueryTest >> testFromClassScope [
 
 { #category : #tests }
 ClyVariableReadersQueryTest >> testFromMethodScope [
+	self queryFromScope: ClyMethodScope ofAll: {(self class >> #reader1OfVar1) . (self class >> #writerOfVar1)}.
 
-	self 
-		queryFromScope: ClyMethodScope
-		ofAll: { self class >> #reader1OfVar1. self class >> #writerOfVar1 }.
-	
 	self assert: resultItems size equals: 1.
-	self assert: resultItems first == (self class >> #reader1OfVar1)
+	self assert: resultItems first identicalTo: self class >> #reader1OfVar1
 ]
 
 { #category : #tests }

@@ -182,6 +182,26 @@ SmallFloat64 >> exp [
 	^ base * correction
 ]
 
+{ #category : #'mathematical functions' }
+SmallFloat64 >> exponent [
+	"Primitive. Consider the receiver to be represented as a power of two
+	multiplied by a mantissa (between one and two). Answer with the
+	SmallInteger to whose power two is raised. Optional. See Object
+	documentation whatIsAPrimitive."
+
+	| positive |
+	<primitive: 553>
+	self >= 1.0 ifTrue: [^self floorLog: 2].
+	self > 0.0
+		ifTrue: 
+			[positive := (1.0 / self) exponent.
+			self = (1.0 / (1.0 timesTwoPower: positive))
+				ifTrue: [^positive negated]
+				ifFalse: [^positive negated - 1]].
+	self = 0.0 ifTrue: [^-1].
+	^self negated exponent
+]
+
 { #category : #'truncation and round off' }
 SmallFloat64 >> fractionPart [
 	"Primitive. Answer a Float whose value is the difference between the 
@@ -197,6 +217,12 @@ SmallFloat64 >> identityHash [
 	"We need the override since basicIdentityHash is already in SmallInteger range,
 	 the bitShift: 8 of the super implementation would lead to a LargeInteger"
 	^ self basicIdentityHash
+]
+
+{ #category : #testing }
+SmallFloat64 >> isImmediateObject [
+	"This is needed for the boostrap"
+	^ true
 ]
 
 { #category : #'mathematical functions' }

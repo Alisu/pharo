@@ -1,5 +1,5 @@
 "
-RBPatternBlockNode is the node in matching parse trees (it never occurs in normal Smalltalk code) that executes a block to determine if a match occurs. valueBlock takes two arguments, the first is the actual node that we are trying to match against, and second node is the dictionary that contains all the metavariable bindings that the matcher has made thus far.
+RBPatternBlockNode is the node in matching parse trees (it never occurs in normal Smalltalk code) that executes a block to determine if a match occurs. valueBlock takes two arguments, the first is the actual node that we are trying to match against, and the second node is the dictionary that contains all the metavariable bindings that the matcher has made thus far.
 
 Instance Variables:
 	valueBlock	<BlockClosure>	The block to execute when attempting to match this to a node.
@@ -34,14 +34,11 @@ RBPatternBlockNode >> addArgumentWithNameBasedOn: aString to: aRBBlockNode [
 ]
 
 { #category : #matching }
-RBPatternBlockNode >> constructLookupNodeFor: aString in: aRBBlockNode [ 
-	| argumentNode |
-	argumentNode := RBLiteralNode value: aString.
-	
-	^RBMessageNode 
-		receiver: (RBVariableNode named: 'self')
-		selector: #lookupMatchFor:in:
-		arguments: (Array with: argumentNode with: aRBBlockNode arguments last copy)
+RBPatternBlockNode >> constructLookupNodeFor: aString in: aRBBlockNode [
+	^ RBMessageNode
+		  receiver: RBVariableNode selfNode
+		  selector: #lookupMatchFor:in:
+		  arguments: (Array with: (RBLiteralNode value: aString) with: aRBBlockNode arguments last copy)
 ]
 
 { #category : #matching }

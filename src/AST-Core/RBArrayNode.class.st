@@ -1,11 +1,11 @@
 "
-A RBArrayNode is an AST node for runtime arrays.
+An RBArrayNode is an AST node for runtime arrays.
 
 Instance Variables
 	left:	 <Integer | nil> position of {
 	periods: <SequenceableCollection of: Integer> the positions of all the periods that separate the statements
 	right: <Integer | nil> position of }
-	statements: <SequenceableCollection of: RBStatementNode> the statement nodes
+	statements: <SequenceableCollection of: RBValueNode> the statement nodes
 "
 Class {
 	#name : #RBArrayNode,
@@ -95,6 +95,14 @@ RBArrayNode >> addNodesFirst: aCollection [
 ]
 
 { #category : #accessing }
+RBArrayNode >> allStatements [
+	^ statements asOrderedCollection copy
+			addAll: super allStatements;
+			yourself
+
+]
+
+{ #category : #accessing }
 RBArrayNode >> children [
 	^ self statements
 ]
@@ -135,7 +143,8 @@ RBArrayNode >> indexOfNode: aNode [
 { #category : #initialization }
 RBArrayNode >> initialize [
 	super initialize.
-	statements := periods := #().
+	statements := OrderedCollection new.
+	periods := #().
 	left := right := 0.
 ]
 
@@ -145,8 +154,13 @@ RBArrayNode >> isDynamicArray [
 ]
 
 { #category : #testing }
+RBArrayNode >> isEmpty [
+	^ statements isEmpty 
+]
+
+{ #category : #testing }
 RBArrayNode >> isFaulty [
-	^self statements anySatisfy: #isFaulty
+	^self statements anySatisfy: [:each | each isFaulty]
 ]
 
 { #category : #testing }

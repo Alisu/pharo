@@ -20,7 +20,9 @@ Class {
 { #category : #testing }
 NonInteractiveUIManager class >> isValidForCurrentSystemConfiguration [
 
-	^ Smalltalk isHeadless and: [ Smalltalk isInteractive not ]
+	^ Smalltalk isHeadless 
+		and: [ Smalltalk isInteractive not
+		and: [ Smalltalk isInteractiveGraphic not ] ]
 ]
 
 { #category : #'ui requests' }
@@ -126,14 +128,6 @@ NonInteractiveUIManager >> lowSpaceWatcherDefaultAction: preemptedProcess [
 	self quitFrom: ctx withMessage: 'Low space signal received.'.
 	
 	self error. "what else we can do? "
-]
-
-{ #category : #'ui requests' }
-NonInteractiveUIManager >> merge: merger informing: aString [
-	"Check for conflicts, if there are none, just continue. 
-	 Merger will accept all conflicts"
-	super merge: merger informing: aString.
-	merger hasConflicts ifTrue: [ self exitFailure ]
 ]
 
 { #category : #'ui requests' }

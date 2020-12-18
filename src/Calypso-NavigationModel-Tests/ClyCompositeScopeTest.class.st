@@ -29,7 +29,7 @@ ClyCompositeScopeTest >> testAdoptQuery [
 			self assert: each class equals: query class.
 			self assert: each extraParameter equals: #testParameter ].
 	self
-		assert: (adoptedQuery subqueries collect: #scope)
+		assert: (adoptedQuery subqueries collect: [:each | each scope])
 		equals: scope subscopes asSet
 ]
 
@@ -75,9 +75,9 @@ ClyCompositeScopeTest >> testComparisonWithCompositeScopeBasedOnDifferentQueries
 	| scope2 |
 	scope := self createSampleScope.
 	scope2 := self createSampleScope.
-	scope2 subscopes: {ClyScopeExample2 of: #someBasis in: environment}.
-	
-	self deny: scope = scope2
+	scope2 subscopes: {(ClyScopeExample2 of: #someBasis in: environment)}.
+
+	self deny: scope equals: scope2
 ]
 
 { #category : #tests }
@@ -180,7 +180,7 @@ ClyCompositeScopeTest >> testCreationOnTwoSubscopesOfDifferentObjects [
 ClyCompositeScopeTest >> testEmptySubscopesAreForbidden [
 	
 	[ClyCompositeScope on: #().
-	self assert: false description: 'empty subscopes should be forbidden'] ifError: [].
+	self assert: false description: 'empty subscopes should be forbidden'] onErrorDo: [].
 	
 ]
 

@@ -6,15 +6,41 @@ I use a builder (MorphicTreeTableCellBuilder) to realise the cell content.
 Class {
 	#name : #SpMorphicTreeTableDataSource,
 	#superclass : #FTTreeDataSource,
-	#traits : 'TSpMorphicTableDataSourceCommons',
-	#classTraits : 'TSpMorphicTableDataSourceCommons classTrait',
+	#traits : 'SpTMorphicTableDataSourceCommons',
+	#classTraits : 'SpTMorphicTableDataSourceCommons classTrait',
 	#category : #'Spec2-Adapters-Morphic-Table'
 }
+
+{ #category : #'search strategies' }
+SpMorphicTreeTableDataSource class >> allItemsStrategy [
+
+	^ SpMorphicAllItemsStrategy
+]
+
+{ #category : #'search strategies' }
+SpMorphicTreeTableDataSource class >> defaultStrategy [
+
+	^ SpMorphicVisibleItemsStrategy
+]
+
+{ #category : #'search strategies' }
+SpMorphicTreeTableDataSource class >> rootsOnlyStrategy [
+
+	^ SpMorphicRootItemsStrategy
+]
 
 { #category : #accessing }
 SpMorphicTreeTableDataSource >> allShownItems [
 
 	^ rootItem children flatCollect: [ :e | e withExpandedChildren ].
+]
+
+{ #category : #accessing }
+SpMorphicTreeTableDataSource >> buttonFor: item [
+
+	^ (self shouldDisplayExpandableArrowFor: item) 
+		ifTrue: [ item generateButton ] 
+		ifFalse: [ self class emptyMorph ]
 ]
 
 { #category : #accessing }
@@ -40,6 +66,30 @@ SpMorphicTreeTableDataSource >> cellColumn: column row: rowIndex [
 SpMorphicTreeTableDataSource >> cellIndentFor: item [ 
 
 	^ item depth * 16
+]
+
+{ #category : #'as yet unclassified' }
+SpMorphicTreeTableDataSource >> expandPath: anArray [
+
+	self expandPath: anArray root: self rootItem children
+]
+
+{ #category : #'as yet unclassified' }
+SpMorphicTreeTableDataSource >> expandPath: anArray root: nodes [ 
+	| node |
+	
+	anArray ifEmpty: [ ^ self ].
+	nodes ifEmpty: [ ^ self ].
+
+	node := nodes at: anArray first.
+	node expand.
+	self expandPath: anArray allButFirst root: node children
+]
+
+{ #category : #paths }
+SpMorphicTreeTableDataSource >> indexFromPath: anArray [ 
+
+	^ anArray sum
 ]
 
 { #category : #accessing }
@@ -82,11 +132,28 @@ SpMorphicTreeTableDataSource >> pathFromIndex: anInteger [
 	| item |
 	
 	item := self allShownItems at: anInteger ifAbsent: [ ^ #() ].
-	^ self pathOfItem: item root: rootItem
+	^ self pathOfNode: item root: rootItem
 ]
 
 { #category : #accessing }
-SpMorphicTreeTableDataSource >> pathOfItem: anItem root: aRoot [ 
+SpMorphicTreeTableDataSource >> pathOfItem: anItem root: aNode [
+	"Looks for the path of an item (contained in a node)"
+	
+	aNode isExpanded ifFalse: [ ^#() ].
+	
+	aNode children 
+		detect: [ :each | each data = anItem ]
+		ifFound: [ :childNode | ^ { aNode children indexOf: childNode } ].
+		
+	aNode children withIndexDo: [ :aChild :index | | aSubPath |
+		aSubPath := self pathOfItem: anItem root: aChild.
+		aSubPath ifNotEmpty: [ ^ { index } , aSubPath ] ].
+	
+	^ #()
+]
+
+{ #category : #accessing }
+SpMorphicTreeTableDataSource >> pathOfNode: anItem root: aRoot [ 
 	
 	aRoot isExpanded ifFalse: [ ^#() ].
 	
@@ -94,7 +161,7 @@ SpMorphicTreeTableDataSource >> pathOfItem: anItem root: aRoot [
 		ifTrue: [ ^ { aRoot children indexOf: anItem } ].
 		
 	aRoot children withIndexDo: [ :aChild :index | | aSubPath |
-		aSubPath := self pathOfItem: anItem root: aChild.
+		aSubPath := self pathOfNode: anItem root: aChild.
 		aSubPath ifNotEmpty: [ ^ { index } , aSubPath ] ].
 	
 	^ #().
@@ -105,4 +172,34 @@ SpMorphicTreeTableDataSource >> rootItem: anItem [
 
 	super rootItem: anItem.
 	self addSourceToRootItem
+]
+
+{ #category : #accessing }
+SpMorphicTreeTableDataSource >> searchText: aString [
+
+	^ (self class perform: (self searchStrategy, 'Strategy') asSymbol) 
+		searchWith: aString 
+		dataSource: self
+]
+
+{ #category : #testing }
+SpMorphicTreeTableDataSource >> shouldDisplayExpandableArrowFor: item [
+	^ (self canDisplayChildrenOf: item) and: [
+			self model shouldLazilyComputeChildren
+				ifTrue: [ item hasComputedChildren ]
+				ifFalse: [ item hasChildren ] ]
+]
+
+{ #category : #sorting }
+SpMorphicTreeTableDataSource >> sortElements: aSortFunction [
+
+	unsortedElements ifNil: [ unsortedElements := self rootsItems ].
+	self rootItem data: ((self rootItem children collect: #data) sorted: aSortFunction)
+]
+
+{ #category : #accessing }
+SpMorphicTreeTableDataSource >> toString: anItem [
+	"Override me if you expect something else."
+
+	^ super toString: anItem data
 ]

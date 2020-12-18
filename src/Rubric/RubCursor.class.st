@@ -68,19 +68,23 @@ RubCursor class >> rubricSettingsOn: aBuilder [
 		with: [ 
 					(aBuilder setting: #cursorWithFixedColor)
 						target: self;
+						default: false;
 						label: 'Fixed color';
 						with: [ 
 									(aBuilder setting: #defaultColor)
 										target: self;
+										default: Color lightGray;
 										description: 'The cursolr color color';
 										label: 'Color'  ].
 					(aBuilder range: #defaultWidth)
 						target: self;
+						default: 2;
 						label: 'Width';
 						description: 'Specify the cursor width';
 						range: (1 to: 4).
 					(aBuilder range: #period)
 						target: self;
+						default: 700;
 						label: 'Blinking period';
 						description:
 								'Specify the cursor blinking period in milliseconds. If it is set to zero then the cursor will not blink';
@@ -189,14 +193,6 @@ RubCursor >> noteNewOwner: aMorph [
 	self textArea announcer when: RubSelectionChanged send: #whenTextAreaSelectionChanged: to: self.
 	self textArea announcer when: RubTextStyleChanged send: #whenTextAreaTextStyleChanged: to: self.
 
-]
-
-{ #category : #private }
-RubCursor >> outOfWorld: aWorld [
-
-	super outOfWorld: aWorld.
-	
-	aWorld removeAlarm: #hideShow for: self.
 ]
 
 { #category : #accessing }

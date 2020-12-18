@@ -44,23 +44,18 @@ BaselineOfMorphic >> baseline: spec [
 			baseline: 'MorphicCore' with: [spec repository: repository];
 			baseline: 'MenuRegistration' with: [spec repository: repository].
 
+		spec baseline: 'Fuel' with: [ 
+			spec repository: repository; loads: #('Core') ].
+
 		spec package: 'System-Localization'.
-		spec package: 'Collections-DoubleLinkedList'.
-		spec package: 'Text-Core'.
 		spec package: 'System-Clipboard'.
 		
-		spec package: 'Balloon'.
 		spec package: 'EmbeddedFreeType'.
-		spec package: 'EmergencyEvaluator'.
+		spec package: 'EmergencyDebugger'.
 		spec package: 'FileSystem-Zip'.
 		spec package: 'Fonts-Infrastructure'.
 		spec package: 'FreeType'.
-		spec package: 'Fuel-Core'.
-		spec package: 'Fuel-Platform-Core'.
-		spec package: 'Fuel-Platform-Pharo-Core'.
-		spec package: 'Fuel-Platform-Pharo-07'.
-
-		spec package: 'Fonts-Abstract'.
+		spec package: 'FreeType-Morphic'.
 
 		spec package: 'Graphics-Files'.
 		spec package: 'Graphics-Fonts'.
@@ -96,9 +91,6 @@ BaselineOfMorphic >> baseline: spec [
 		"Several packages depend on Rubric as a basic Morphic component"
 		spec package: 'Rubric'.
 		
-		spec package: 'Multilingual-OtherLanguages'.
-		spec package: 'Multilingual-TextConverterOtherLanguages'.
-
 		spec package: 'NewValueHolder-Core'.
 
 		spec package: 'Polymorph-Widgets'.
@@ -109,11 +101,13 @@ BaselineOfMorphic >> baseline: spec [
 		spec package: 'Settings-Polymorph'.
 		spec package: 'Settings-System'.
 
-		spec package: 'System-Caching'.
 		spec package: 'System-History'.
 		spec package: 'System-Installers'.
 		spec package: 'System-Settings-Core'.
 		spec package: 'System-Settings-Browser'.
+		"the following package is listed here to be after Setting core 
+		however conceptually it could be placed somewhere else."
+		spec package: 'Formatter-Settings'.
 		spec package: 'System-Sound'.
 		
 		spec package: 'Text-Diff'.
@@ -125,7 +119,6 @@ BaselineOfMorphic >> baseline: spec [
 		spec package: 'Morphic-Widgets-TickList'.
 		
 		spec package: 'System-Changes-FileServices'.
-		spec package: 'System-OSEnvironments'.
 
 		spec package: 'StartupPreferences'.
 		spec package: 'System-Identification'.
@@ -225,38 +218,49 @@ BaselineOfMorphic >> loadBitmapDejaVuSans [
 
 { #category : #fonts }
 BaselineOfMorphic >> loadBitmapFontFamily: familyName sizes: pointSizes [
-
-	| fonts styleNames fileName directoryReference |
-
-	directoryReference := (Smalltalk os environment at: 'BOOTSTRAP_REPOSITORY' ifAbsent: [ FileSystem workingDirectory ]) asFileReference / 'resources' / 'fonts'.
-
-	fonts := pointSizes collect: [ :pointSize | 	
-		| regular bold italic boldItalic |
-		styleNames := #('Regular' 'Bold' 'Italic' 'Bold Italic').
-
-		fileName := familyName, ' ', pointSize asString.
-		regular := STON fromStream: (directoryReference / (fileName, ' Regular.ston')) readStream.
-		regular setGlyphs: (PNGReadWriter formFromFileNamed: (directoryReference / (fileName, ' Regular.png')) fullName).
-
-		bold := STON fromStream: (directoryReference / (fileName, ' Bold.ston')) readStream.
-		bold setGlyphs: (PNGReadWriter formFromFileNamed: (directoryReference / (fileName, ' Bold.png')) fullName).
-		
-		italic := STON fromStream: (directoryReference / (fileName, ' Italic.ston')) readStream.
-		italic setGlyphs: (PNGReadWriter formFromFileNamed: (directoryReference / (fileName, ' Italic.png')) fullName).
-
-		boldItalic := STON fromStream: (directoryReference / (fileName, ' Bold Italic.ston')) readStream.
-		boldItalic setGlyphs: (PNGReadWriter formFromFileNamed: (directoryReference / (fileName, ' Bold Italic.png')) fullName).
-		
-		regular instVarNamed: #derivativeFonts put: ({bold. italic. boldItalic}, (Array new: 29)).
-		bold instVarNamed: #derivativeFonts put: (Array new: 32).
-		italic instVarNamed: #derivativeFonts put: (Array new: 32).
-		boldItalic instVarNamed: #derivativeFonts put: (Array new: 32).
-		regular
-	].
-
-	^ TextStyle fontArray: fonts.		
-
-	
+	| fonts fileName directoryReference |
+	directoryReference := (Smalltalk os environment
+		                       at: 'BOOTSTRAP_REPOSITORY'
+		                       ifAbsent: [ FileSystem workingDirectory ])
+		                      asFileReference / 'resources' / 'fonts'.
+	fonts := pointSizes collect: [ :pointSize | 
+		         | regular bold italic boldItalic |
+		         fileName := familyName , ' ' , pointSize asString.
+		         regular := STON fromStream:
+			                    (directoryReference
+			                     / (fileName , ' Regular.ston')) readStream.
+		         regular setGlyphs: (PNGReadWriter formFromFileNamed:
+				          (directoryReference / (fileName , ' Regular.png'))
+					          fullName).
+		         bold := STON fromStream:
+			                 (directoryReference / (fileName , ' Bold.ston'))
+				                 readStream.
+		         bold setGlyphs: (PNGReadWriter formFromFileNamed:
+				          (directoryReference / (fileName , ' Bold.png')) fullName).
+		         italic := STON fromStream:
+			                   (directoryReference
+			                    / (fileName , ' Italic.ston')) readStream.
+		         italic setGlyphs: (PNGReadWriter formFromFileNamed:
+				          (directoryReference / (fileName , ' Italic.png'))
+					          fullName).
+		         boldItalic := STON fromStream:
+			                       (directoryReference
+			                        / (fileName , ' Bold Italic.ston'))
+				                       readStream.
+		         boldItalic setGlyphs: (PNGReadWriter formFromFileNamed:
+				          (directoryReference / (fileName , ' Bold Italic.png'))
+					          fullName).
+		         regular instVarNamed: #derivativeFonts put: { 
+				         bold.
+				         italic.
+				         boldItalic } , (Array new: 29).
+		         bold instVarNamed: #derivativeFonts put: (Array new: 32).
+		         italic instVarNamed: #derivativeFonts put: (Array new: 32).
+		         boldItalic
+			         instVarNamed: #derivativeFonts
+			         put: (Array new: 32).
+		         regular ].
+	^ TextStyle fontArray: fonts
 ]
 
 { #category : #fonts }
@@ -280,7 +284,7 @@ BaselineOfMorphic >> postload: loader package: packageSpec [
 	"Ignore pre and post loads if already executed"
 	Initialized = true ifTrue: [ ^ self ].
 
-	'Starting postload action' traceCr.
+	SystemNotification signal: 'Starting postload action'.
 
 	Smalltalk cleanOutUndeclared.
 	Author fullName: self class name.
@@ -303,10 +307,10 @@ BaselineOfMorphic >> postload: loader package: packageSpec [
 	self loadBitmapSourcePro.
 	
 	#(TextStyle) do: [:each | (Smalltalk globals at: each) initialize. ].
-
+	
 	Stdio stdout nextPutAll: 'bitmap fonts loaded' asString; lf.
 
-	#(ProgressBarMorph BalloonBezierSimulation BalloonEngineConstants BalloonEngine 
+	#(ProgressBarMorph BalloonEngineConstants BalloonEngine 
 	CornerRounder  DigitalSignatureAlgorithm DummySoundSystem
 	FT2Types FT2FFILibrary
 	FreeTypeCacheConstants FreeTypeCache FreeTypeSettings 
@@ -327,14 +331,10 @@ BaselineOfMorphic >> postload: loader package: packageSpec [
 	UIManager default terminateUIProcess.
 	MorphicUIManager new spawnNewProcess.
 	Display newDepth: 32.
-	World displayWorldSafely.
+	
 	UIManager default: MorphicUIManager new.
-
-	World displayWorldSafely.
-
 	UIManager default uiProcess resume.
-	PharoDarkTheme beCurrent.
-	(World windowsSatisfying: [:w | w model canDiscardEdits]) do: [:w | w delete].
+	PharoLightTheme beCurrent.
 	self cleanUpAfterMorphicInitialization.
 
 	GraphicFontSettings setFontsToStyleNamed: #small.
@@ -353,8 +353,10 @@ BaselineOfMorphic >> postload: loader package: packageSpec [
 
 	Smalltalk cleanOutUndeclared.
 
-	#(#AbstractFont #BalloonMorph #CP1253TextConverter #Clipboard #EditorFindReplaceDialogWindow #EmbeddedFreeTypeFontInstaller #FLCompiledMethodCluster #FLLargeIdentityHashedCollection #FLPlatform #FreeTypeFontProvider #GB2312 #GradientFillStyle #GreekEnvironment #ISO88597TextConverter #IconicButton #JISX0208 #JapaneseEnvironment #KOI8RTextConverter #KMLog #KSX1001 #KoreanEnvironment #LogicalFont #LucidaGrandeRegular #OSEnvironment #RussianEnvironment #ScrollBar #SimplifiedChineseEnvironment "#SourceCodeProRegular #SourceSansProRegular" #StrikeFont #SystemSettingsPersistence #TabMorph #TaskbarMorph #Text #TextAction #TextConstants #TextEditor #TextStyle) do: [:each |
+	#(#AbstractFont #BalloonMorph #Clipboard #EditorFindReplaceDialogWindow #EmbeddedFreeTypeFontInstaller #FLCompiledMethodCluster #FLLargeIdentityHashedCollection #FLPlatform #FreeTypeFontProvider #GradientFillStyle #IconicButton #KMLog #LogicalFont #LucidaGrandeRegular #OSEnvironment #ScrollBar #StrikeFont #SystemSettingsPersistence #TabMorph #TaskbarMorph #Text #TextAction #TextConstants #TextEditor #TextStyle) do: [:each |
 		 (Smalltalk globals at: each) initialize. ].
+
+	LogicalFontManager current addFontProvider: FreeTypeFontProvider current.
 
 	array := Smalltalk specialObjectsArray copy.
 	array at: 5 put: Bitmap.
@@ -374,7 +376,7 @@ BaselineOfMorphic >> preload: loader package: packageSpec [
 	"Ignore pre and post loads if already executed"
 	Initialized = true ifTrue: [ ^ self ].
 
-	'Starting preload action' traceCr.
+	SystemNotification signal: 'Starting preload action'.
 	
 	initializersEnabled := MCMethodDefinition initializersEnabled.
 	MCMethodDefinition initializersEnabled: false.

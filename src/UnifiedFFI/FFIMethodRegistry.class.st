@@ -44,7 +44,7 @@ FFIMethodRegistry class >> resetAll [
 	I am not supposed to be performed when image is just saved to avoid possible problem which can happen when we reset all caches and continue to work"
 	self uniqueInstance reset.
 	FFICallbackFunctionResolution reset.
-	FFIExternalStructure resetAllStructures.
+	FFIStructure resetAllStructures.
 	uniqueInstance := nil.
 ]
 
@@ -89,7 +89,7 @@ FFIMethodRegistry >> removeMethod: aMethod [
 
 	aMethod methodClass methodDict
 		at: aMethod selector
-		put: (aMethod propertyValueAt: #ffiNonCompiledMethod)
+		put: (aMethod propertyAt: #ffiNonCompiledMethod)
 ]
 
 { #category : #initialization }

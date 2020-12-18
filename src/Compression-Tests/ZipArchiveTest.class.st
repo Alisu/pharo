@@ -56,6 +56,29 @@ ZipArchiveTest >> testAddNonExistentFile [
 ]
 
 { #category : #tests }
+ZipArchiveTest >> testArchiveWithThousandFilesShouldWork [
+	
+	"Smoke test showing that we can create zip archives with up to 1000 elements.
+	This test was created as a regression test. Previous implementations were leaking files and reaching the open file limits from the operating system."
+	
+	| dir theZip |
+	dir := (FileLocator temp / 'testfiles') ensureCreateDirectory.
+	[
+		1 to: 1000 do: [ :i | 
+			(dir / ('test-' , i asString))
+				writeStreamDo: [ :stream | stream nextPutAll: 'file contents' ];
+				yourself ].
+		
+		theZip := ZipArchive new.
+		dir children do: [ :eachFile | theZip addFile: eachFile resolve ].
+		theZip writeToFile: FileLocator temp / 'result.zip'.	
+		theZip close.
+	] ensure: [ 
+		dir ensureDeleteAll.
+		(FileLocator temp / 'result.zip') ensureDelete. ]
+]
+
+{ #category : #tests }
 ZipArchiveTest >> testCanUnzipFromFileName [
 	| nestedFileToZip |
 	nestedFileToZip := (subdir / '_test-zip-file.txt')
@@ -251,13 +274,13 @@ ZipArchiveTest >> testFilePermissions [
 ]
 
 { #category : #tests }
-ZipArchiveTest >> testParseSqueakZipTimestamp [
+ZipArchiveTest >> testParsePharoZipTimestamp [
 	"Issue 6054. We're testing a private method. Eventually, the zip timestamp handling should be refactored; maybe a ZipTimestamp subclass of DosTimestamp"
 
-	| squeakDosTimestamp dateAndTime |
+	| dosTimestamp dateAndTime |
 	"This was the error-causing timestamp from http://code.google.com/p/pharo/issues/detail?id=6054#c1 . It was the 'package' file inside Balloon-CamilloBruni.85.mcz"
-	squeakDosTimestamp := 1001728866.
-	dateAndTime := ZipFileMember new unzipTimestamp: squeakDosTimestamp.
+	dosTimestamp := 1001728866.
+	dateAndTime := ZipFileMember new unzipTimestamp: dosTimestamp.
 	self assert: dateAndTime equals: '2011-09-29T04:01:06+00:00' asDateAndTime.
 ]
 

@@ -103,6 +103,15 @@ TraitedClass >> addSelector: selector withMethod: compiledMethod [
 	TraitChange addSelector: selector on: self
 ]
 
+{ #category : #'accessing method dictionary' }
+TraitedClass >> addSelector: selector withRecompiledMethod: compiledMethod [ 
+	"When a new selector is installed in a class I insert the selector in the local methodDict and propagate the changes to my users"
+	
+	self localMethodDict at: selector put: compiledMethod.
+	super addSelector: selector withRecompiledMethod: compiledMethod.
+	TraitChange addSelector: selector on: self
+]
+
 { #category : #querying }
 TraitedClass >> allTraits [
 	^ self traitComposition allTraits
@@ -203,10 +212,10 @@ TraitedClass >> isLocalAliasSelector: aSymbol [
 
 { #category : #testing }
 TraitedClass >> isLocalMethodsProtocol: aProtocol [
-
 	"Checks if the protocol has local selectors"
-	aProtocol methods ifEmpty: [ ^true ].
-	^aProtocol methods anySatisfy: [ :each | self isLocalSelector: each]
+
+	aProtocol methodSelectors ifEmpty: [ ^ true ].
+	^ aProtocol methodSelectors anySatisfy: [ :each | self isLocalSelector: each ]
 ]
 
 { #category : #testing }
@@ -312,9 +321,13 @@ TraitedClass >> traitComposition [
 ]
 
 { #category : #accessing }
-TraitedClass >> traitComposition: anObject [
+TraitedClass >> traitComposition: aComposition [
 	
-	self class baseComposition: anObject
+	aComposition asTraitComposition allTraits do: [ :aMaybeTrait |
+		aMaybeTrait isTrait ifFalse: [ 
+			self error: 'All the members of the trait composition should be traits' ]].
+		
+	self class baseComposition: aComposition
 ]
 
 { #category : #accessing }

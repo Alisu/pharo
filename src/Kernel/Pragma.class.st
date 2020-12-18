@@ -20,8 +20,41 @@ Class {
 		'arguments',
 		'selector'
 	],
+	#classInstVars : [
+		'pragmaCache'
+	],
 	#category : #'Kernel-Pragmas'
 }
+
+{ #category : #cache }
+Pragma class >> addToCache: aPragma [
+	"when a method is added to a class, the Pragma is added to the cache"
+	self pragmaCache
+		at: aPragma selector
+		ifAbsentPut: [ WeakIdentitySet new ].
+	(self pragmaCache at: aPragma selector) add: aPragma
+]
+
+{ #category : #cache }
+Pragma class >> all [
+	"all pragmas whose methods are currently installed in the system"
+	^ self pragmaCache values flattened select: [ :each | 
+		  each method isInstalled ]
+]
+
+{ #category : #finding }
+Pragma class >> allNamed: aSymbol [
+
+	"Answer a collection of all pragmas whose selector is aSymbol."
+
+	| pragmas |
+	pragmas := self pragmaCache at: aSymbol ifAbsent: [ ^ #(  ) ].
+	"if there are none, we can remove the entry in the cache"
+	pragmas ifEmpty: [ self pragmaCache removeKey: aSymbol ifAbsent: [  ] ].
+	"we check if the pragma is really from an installed method 
+	(others will be cleaned up by the gc when the method is garbadge collected)"
+	^ (pragmas select: [ :each | each method isInstalled ]) asArray
+]
 
 { #category : #finding }
 Pragma class >> allNamed: aSymbol from: aSubClass to: aSuperClass [
@@ -31,9 +64,7 @@ Pragma class >> allNamed: aSymbol from: aSubClass to: aSuperClass [
 		streamContents: [ :stream | 
 			aSubClass
 				withAllSuperclassesDo: [ :class | 
-					self
-						withPragmasIn: class
-						do: [ :pragma | 
+					class pragmasDo: [ :pragma | 
 							pragma selector = aSymbol
 								ifTrue: [ stream nextPut: pragma ] ].
 					aSuperClass = class
@@ -59,9 +90,9 @@ Pragma class >> allNamed: aSymbol in: aClass [
 	"Answer a collection of all pragmas found in methods of aClass whose selector is aSymbol."
 	
 	^ Array streamContents: [ :stream |
-		self withPragmasIn: aClass do: [ :pragma |
+		 aClass pragmasDo: [ :pragma |
 			pragma selector = aSymbol
-				ifTrue: [ stream nextPut: pragma ] ] ].
+				ifTrue: [ stream nextPut: pragma ] ] ]
 ]
 
 { #category : #finding }
@@ -87,17 +118,18 @@ Pragma class >> for: aMethod selector: aSelector arguments: anArray [
 		yourself
 ]
 
+{ #category : #cache }
+Pragma class >> pragmaCache [
+
+	^ pragmaCache ifNil: [ pragmaCache := Dictionary new ]
+]
+
 { #category : #private }
 Pragma class >> selector: aSymbol arguments: anArray [
 	^ self new
 		selector: aSymbol;
 		arguments: anArray;
 		yourself
-]
-
-{ #category : #private }
-Pragma class >> withPragmasIn: aClass do: aBlock [
-	aClass selectorsAndMethodsDo: [ :selector :method | method pragmas do: aBlock ].
 ]
 
 { #category : #comparing }
@@ -129,6 +161,27 @@ Pragma >> argumentAt: anInteger [
 ]
 
 { #category : #'accessing-pragma' }
+Pragma >> argumentNamed: aSymbol [
+	"Answer the argument of the pragma after the keyword given as parameter.
+	If none, raise an error."
+
+	^ self argumentNamed: aSymbol ifNone: [ self error: 'No argument of this name.' ]
+]
+
+{ #category : #'accessing-pragma' }
+Pragma >> argumentNamed: aSymbol ifNone: aBlockClosure [
+	"Answer the argument of the pragma after the keyword given as parameter.
+	If none, return the result of the block given as parameter.
+	
+	I am more readable than #argumentAt: but also slower."
+
+	^ self argumentAt:
+		(self selector keywords
+			indexOf: aSymbol asMutator
+			ifAbsent: [ ^ aBlockClosure value])
+]
+
+{ #category : #'accessing-pragma' }
 Pragma >> arguments [
 	"Answer the arguments of the receiving pragma. For a pragma defined as <key1: val1 key2: val2> this will answer #(val1 val2)."
 	
@@ -144,14 +197,6 @@ Pragma >> arguments: anArray [
 Pragma >> hasLiteral: aLiteral [
 	^self selector == aLiteral 
 	   or: [arguments hasLiteral: aLiteral]
-]
-
-{ #category : #testing }
-Pragma >> hasLiteralSuchThat: aBlock [
-	"Answer true if litBlock returns true for any literal in the receiver, even if embedded in further array structure.
-	 This method is only intended for private use by CompiledMethod hasLiteralSuchThat:"
-	^(aBlock value: self selector)
-	   or: [arguments hasLiteralSuchThat: aBlock]
 ]
 
 { #category : #comparing }
@@ -223,6 +268,12 @@ Pragma >> printOn: aStream [
 				aStream nextPutAll: key; space; print: arg; space ].
 			aStream skip: -1 ].
 	aStream nextPut: $>.
+]
+
+{ #category : #testing }
+Pragma >> refersToLiteral: aLiteral [
+	^self selector == aLiteral 
+	   or: [arguments hasLiteral: aLiteral]
 ]
 
 { #category : #accessing }

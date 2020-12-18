@@ -106,49 +106,24 @@ Metaclass >> classSide [
 Metaclass >> classVarNames [
 	"Answer the names of the class variables defined in the receiver's instance."
 	
-	self instanceSide ifNil: [ ^ Array new ].
-	^self instanceSide classVarNames
+	^self instanceSide 
+		ifNil: [ #() ]
+		ifNotNil: [ :class | class classVarNames ]
 ]
 
 { #category : #'class variables' }
 Metaclass >> classVariables [
-	"Answer a set of the names of the class variables defined in the receiver's instance."
-	
-	self instanceSide ifNil: [ ^ Array new].
-	^self instanceSide classVariables
+	"Answer the class variables defined in the receiver's instance."
+
+	^ self instanceSide
+		ifNil: [ #() ]
+		ifNotNil: [ :class | class classVariables ]
 ]
 
-{ #category : #'fileIn/Out' }
-Metaclass >> definition [
-	"Refer to the comment in ClassDescription|definition."
+{ #category : #fileout }
+Metaclass >> definitionStringFor: aConfiguredPrinter [
 
-	(self slotsNeedFullDefinition or: [ Slot showSlotClassDefinition ]) ifTrue: [ 
-		^ self definitionWithSlots ].
-
-	^ self definitionWithoutSlots
-]
-
-{ #category : #'fileIn/Out' }
-Metaclass >> definitionWithSlots [
-	"Refer to the comment in ClassDescription|definition."
-
-	^ String streamContents: [:stream |
-		stream print: self.
-		stream
-			crtab;
-			nextPutAll: 'slots: ';
-			nextPutAll: self slotDefinitionString ]
-]
-
-{ #category : #'fileIn/Out' }
-Metaclass >> definitionWithoutSlots [
-
-	^ String streamContents: [:stream |
-		stream print: self.
-		stream
-			crtab;
-			nextPutAll: 'instanceVariableNames: ';
-			store: self instanceVariablesString ]
+	^ aConfiguredPrinter metaclassDefinitionString 
 ]
 
 { #category : #accessing }
@@ -157,16 +132,21 @@ Metaclass >> environment [
 	^thisClass environment
 ]
 
+{ #category : #fileout }
+Metaclass >> expandedDefinitionStringFor: aPrinter [
+
+	^ aPrinter expandedMetaclassDefinitionString
+]
+
+{ #category : #testing }
+Metaclass >> hasBindingThatBeginsWith: aString [
+	"class and pool vars are accessible from the class side the same as the instance side"
+	^self instanceSide hasBindingThatBeginsWith: aString
+]
+
 { #category : #'accessing parallel hierarchy - deprecated' }
 Metaclass >> hasClassSide [
 	^ false
-]
-
-{ #category : #initialize }
-Metaclass >> initializeFrom: anotherClassTrait [
-	self traitComposition: self traitComposition copyTraitExpression.
-	self methodDict: self methodDict copy.
-	self basicOrganization: self organization copy.
 ]
 
 { #category : #compiling }
@@ -217,6 +197,12 @@ Metaclass >> isObsolete [
 ]
 
 { #category : #testing }
+Metaclass >> isReferenced [
+	"Metaclasses are never directly referenced in code"
+	^false
+]
+
+{ #category : #testing }
 Metaclass >> isSelfEvaluating [
 	^self isObsolete not
 ]
@@ -260,14 +246,6 @@ Metaclass >> obsoleteSubclasses [
 	^ self instanceSide obsoleteSubclasses collect: [ :aSubclass | aSubclass classSide ]
 ]
 
-{ #category : #'fileIn/Out' }
-Metaclass >> oldDefinition [
-	"Refer to the comment in ClassDescription|definition.
-	 This method is for compatibility with Class>>#oldDefinition"
-
-	^ self definition
-]
-
 { #category : #compiling }
 Metaclass >> possibleVariablesFor: misspelled continuedFrom: oldResults [
 
@@ -293,6 +271,11 @@ Metaclass >> removeSlot: aClassSlot [
 { #category : #'class hierarchy' }
 Metaclass >> removeSubclass: aClass [
 	"Do nothing."
+]
+
+{ #category : #'pool variables' }
+Metaclass >> sharedPoolNames [
+	^#()
 ]
 
 { #category : #'pool variables' }
@@ -325,8 +308,8 @@ Metaclass >> sourceCodeTemplate [
 	"Answer an expression to be edited and evaluated in order to define 
 	methods in this class or trait."
 
-	^ 'messageSelectorAndArgumentNames
-	"comment stating purpose of class-side message"
+	^ 'methodSelectorAndArgumentNames
+	"comment stating purpose of class-side method"
 	"scope: class-variables  &  class-instance-variables"	
 			
 	| temporary variable names |
@@ -360,11 +343,4 @@ Metaclass >> wantsChangeSetLogging [
 	"Answer whether code submitted for the receiver should be remembered by the changeSet mechanism.The metaclass follows the rule of the class itself."
 
 	^ self instanceSide wantsChangeSetLogging
-]
-
-{ #category : #compiling }
-Metaclass >> wantsRecompilationProgressReported [
-	"The metaclass follows the rule of the class itself."
-
-	^ self instanceSide wantsRecompilationProgressReported
 ]

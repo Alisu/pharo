@@ -52,36 +52,43 @@ FLSortedCollectionSerializationTest >> testSortedCollection [
 	self assert: x ~= y"
 
 	| aSortBlock aSortedCollection materialized |
-	aSortBlock := [:a :b | a >= b ].
+	aSortBlock := [ :a :b | a >= b ].
 	aSortedCollection := SortedCollection sortBlock: aSortBlock.
 
 	materialized := self resultOfSerializeAndMaterialize: aSortedCollection.
 	self assert: aSortedCollection sortBlock ~~ materialized sortBlock.
 
 	materialized addAll: #(2 1 3).
-	aSortedCollection addAll: #(2 1 3).	
-	self assert: aSortedCollection asArray = materialized asArray.
+	aSortedCollection addAll: #(2 1 3).
+	self assert: aSortedCollection asArray equals: materialized asArray
 ]
 
 { #category : #tests }
 FLSortedCollectionSerializationTest >> testSortedCollectionWithClassVariableChanges [
 	"Tests serialization of a SortedCollection whose sortBlock has a reference to a class variable and its value is changed. See also FLBlockClosureSerializationTest >> testBlockClosureWithClassVariableChanges  and FLCompiledMethodSerializationTest >> testMethodChangingClassVariable"
 
-	| aSortedCollection materialized mmethod index |
+	| aSortedCollection materialized mmethod index sortBlock classVariableInMethod |
 	ClassVariableForTesting := false.
 	
 	aSortedCollection := self class sortedCollectionForTestingWithClassVariable.
 	materialized := self resultOfSerializeAndMaterialize: aSortedCollection.
 	"the class variable ClassVariableForTesting should be false"
 	
-	mmethod := materialized sortBlock outerContext method.
+	sortBlock := materialized sortBlock.
 	
-	index := mmethod literals indexOf: (self class bindingOf: #ClassVariableForTesting).
+	classVariableInMethod := sortBlock isFullBlock 
+		ifTrue: [ 
+			index := sortBlock method literals indexOf: (self class bindingOf: #ClassVariableForTesting).
+			sortBlock method literalAt: index	] 
+		ifFalse: [ 
+			mmethod := materialized sortBlock outerContext method.
+			index := mmethod literals indexOf: (self class bindingOf: #ClassVariableForTesting).
+			mmethod literalAt: index].
 	
-	self deny: (mmethod literalAt: index) value.
+	self deny: classVariableInMethod value.
 	ClassVariableForTesting := true.
 	"the class variable ClassVariableForTesting should be true"
-	self assert: (mmethod literalAt: index) value.
+	self assert: classVariableInMethod value.
 	
 
 ]
@@ -97,15 +104,15 @@ FLSortedCollectionSerializationTest >> testSortedCollectionWithClassVariableRefe
 
 	| aSortedCollection materialized |
 	ClassVariableForTesting := false.
-	
+
 	aSortedCollection := self class sortedCollectionForTestingWithClassVariable.
 	materialized := self resultOfSerializeAndMaterialize: aSortedCollection.
 	ClassVariableForTesting := true.
 	materialized addAll: #(2 3 1).
 	aSortedCollection addAll: #(2 3 1).
-	
-	aSortedCollection sortBlock assertWellMaterializedInto:  materialized sortBlock in: self.
-	self assert: aSortedCollection asArray = materialized asArray.
+
+	aSortedCollection sortBlock assertWellMaterializedInto: materialized sortBlock in: self.
+	self assert: aSortedCollection asArray equals: materialized asArray
 ]
 
 { #category : #tests }
@@ -120,13 +127,13 @@ FLSortedCollectionSerializationTest >> testSortedCollectionWithInstanceVariableR
 	| aSortedCollection materialized |
 	instanceVariableForTesting := false.
 	aSortedCollection := self sortedBlockClosureWithInstanceVariable.
-	
+
 	materialized := self resultOfSerializeAndMaterialize: aSortedCollection.
 	materialized addAll: #(2 3 1).
 	aSortedCollection addAll: #(2 3 1).
-	
-	self assert: aSortedCollection asArray = materialized asArray.
-	self assert: aSortedCollection asArray = #(3 2 1)
+
+	self assert: aSortedCollection asArray equals: materialized asArray.
+	self assert: aSortedCollection asArray equals: #(3 2 1)
 ]
 
 { #category : #tests }
@@ -150,5 +157,5 @@ FLSortedCollectionSerializationTest >> testSortedCollectionWithInstanceVariableR
 	aSortedCollection addAll: #(2 3 1).
 
 	"IMPORTANT: Unfortunatly there is nothing we can do to solve this problem. The sortBlock was serialized with a method context with different values."
-	self deny: aSortedCollection asArray = materialized asArray.
+	self deny: aSortedCollection asArray equals: materialized asArray
 ]

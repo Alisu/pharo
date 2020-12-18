@@ -7,7 +7,7 @@ Class {
 	#instVars : [
 		'renderBlock'
 	],
-	#category : #'Athens-Examples-Demos'
+	#category : #'Athens-Examples-Base'
 }
 
 { #category : #examples }
@@ -45,7 +45,7 @@ AthensSurfaceExamples class >> draw2Strings [
 		can pathTransform translateBy: advance.
 		can drawString: 'in mind.'].
 	
-	surf asForm asMorph openInWindow.
+	surf asMorph openInWindow.
 ]
 
 { #category : #examples }
@@ -189,7 +189,7 @@ AthensSurfaceExamples class >> example10 [
 		can setStrokePaint: Color red.
 		can draw ].
 		
-	surf asForm asMorph openInWindow.
+	surf asMorph openInWindow.
 
 ]
 
@@ -243,7 +243,7 @@ AthensSurfaceExamples class >> example3 [
 		]	
 	].
 
-	surf asForm asMorph openInWindow. 
+	surf asMorph openInWindow. 
 
 ]
 
@@ -277,7 +277,7 @@ AthensSurfaceExamples class >> example3stroke [
 		]	
 	].
 
-	surf asForm asMorph openInWindow. 
+	surf asMorph openInWindow. 
 
 ]
 
@@ -304,7 +304,7 @@ AthensSurfaceExamples class >> example4 [
 		can drawShape: path.
 	].
 
-	surf asForm asMorph openInWindow. 
+	surf asMorph openInWindow. 
 
 ]
 
@@ -338,7 +338,7 @@ AthensSurfaceExamples class >> example5 [
 			])
 	].
 
-	surf asForm asMorph openInWindow. 
+	surf asMorph openInWindow. 
 ]
 
 { #category : #examples }
@@ -366,7 +366,7 @@ AthensSurfaceExamples class >> example6 [
 		can pathTransform translateX: 50 Y: 50; rotateByDegrees: 30.
 		can drawShape: (0@0 corner: 50@50) ].
 
-		surf asForm asMorph openInWindow
+		surf asMorph openInWindow
 
 ]
 
@@ -392,7 +392,7 @@ AthensSurfaceExamples class >> example6point1 [
 
 		can drawShape: (0@0 corner: 50@50) ].
 
-	surf asForm asMorph openInWindow
+	surf asMorph openInWindow
 ]
 
 { #category : #examples }
@@ -420,7 +420,7 @@ AthensSurfaceExamples class >> example6stroke [
 		can pathTransform translateX: 50 Y: 50.
 		can drawShape: (0@0 corner: 50@50) ].
 
-	surf asForm asMorph openInWindow
+	surf asMorph openInWindow
 ]
 
 { #category : #examples }
@@ -455,7 +455,7 @@ AthensSurfaceExamples class >> example7 [
 			
 		].		
 	].
-	surf asForm asMorph openInWindow
+	surf asMorph openInWindow
 ]
 
 { #category : #examples }
@@ -477,7 +477,7 @@ AthensSurfaceExamples class >> example8 [
 
 			can drawShape: (0@0 corner: 200@200)].
 
-	surf asForm asMorph openInWindow
+	surf asMorph openInWindow
 ]
 
 { #category : #examples }
@@ -499,7 +499,7 @@ AthensSurfaceExamples class >> example9 [
 			setPaint: paint;
 			drawShape: (0@0 corner: 100@200)].
 
-	surf asForm asMorph openInWindow
+	surf asMorph openInWindow
 ]
 
 { #category : #examples }
@@ -522,7 +522,100 @@ AthensSurfaceExamples class >> exampleClip [
 		]
 	].
 
-	surf asForm asMorph openInWindow
+	surf asMorph openInWindow
+]
+
+{ #category : #examples }
+AthensSurfaceExamples class >> exampleConicalGradient [
+	| surface meshGradient center radius sliceCount sliceSize colorAngleOffset |
+	surface := AthensCairoSurface extent: 512@512.
+	colorAngleOffset := -90.0.
+	sliceCount := 16.
+	sliceSize := Float twoPi / sliceCount.
+	center := 256@256.
+	radius := 256.
+	
+	meshGradient := MeshGradientPaint new.
+	0 to: sliceCount - 1 do: [ :sliceIndex |
+		| sliceStartAngle sliceEndAngle sliceStartCenterColor sliceStartRadiusColor sliceEndCenterColor sliceEndRadiusColor |
+		sliceStartAngle := sliceIndex * sliceSize.
+		sliceEndAngle := (sliceIndex + 1) * sliceSize.
+		
+		sliceStartCenterColor := Color h: sliceStartAngle radiansToDegrees + colorAngleOffset s: 0.0 v: 1.0.
+		sliceStartRadiusColor := Color h: sliceStartAngle radiansToDegrees + colorAngleOffset s: 1.0 v: 1.0.
+		sliceEndCenterColor := Color h: sliceEndAngle radiansToDegrees + colorAngleOffset s: 0.0 v: 1.0.
+		sliceEndRadiusColor := Color h: sliceEndAngle radiansToDegrees + colorAngleOffset s: 1.0 v: 1.0.
+		
+		meshGradient addCircleSliceCenter: center radius: radius startAngle: sliceStartAngle endAngle: sliceEndAngle colors: {
+			sliceStartCenterColor . sliceStartRadiusColor.
+			sliceEndRadiusColor . sliceEndCenterColor.
+		}
+	].
+			
+	surface drawDuring: [ :canvas |
+		canvas surface clear: Color white.
+		
+		canvas
+			setPaint: meshGradient;
+			setShape: (0@0 extent: 512@512);
+			draw
+	].
+
+	surface asForm asMorph openInWindow
+]
+
+{ #category : #examples }
+AthensSurfaceExamples class >> exampleCoonsPatch [
+	| surface meshPaint |
+	surface := AthensCairoSurface extent: 300@300.
+	meshPaint := MeshGradientPaint new
+		addCoonsPatchWithPoints: {
+			0@0.
+			30@ -30.  60@30. 100@0.
+			60@  30. 130@60. 100@100.
+			60@  70.  30@130.   0@100.
+			30@  70. -30@30
+		} colors: { Color red . Color green . Color blue . Color yellow}.
+			
+	surface drawDuring: [ :canvas |
+		canvas surface clear: Color white.
+		canvas pathTransform translateBy: 100@100.
+		
+		canvas
+			setPaint: meshPaint;
+			setShape: (-100 @ -100 extent: 300@300);
+			draw
+	].
+
+	surface asForm asMorph openInWindow
+]
+
+{ #category : #examples }
+AthensSurfaceExamples class >> exampleCoonsPatch2 [
+	| surface meshPaint |
+	surface := AthensCairoSurface extent: 300@300.
+	meshPaint := MeshGradientPaint new
+		buildPatchWith: [ :patchBuilder |
+			patchBuilder
+				moveTo: 0@0;
+				curveVia: 30@ -30 and: 60@30 to: 100@0;
+				curveVia: 60@  30 and: 130@60 to: 100@100;
+				curveVia: 60@  70 and: 30@130 to: 0@100;
+				curveVia: 30@  70 and: -30@30 to: 0@0;
+				colors: { Color red . Color green . Color blue . Color yellow}
+		].
+			
+	surface drawDuring: [ :canvas |
+		canvas surface clear: Color white.
+		canvas pathTransform translateBy: 100@100.
+		
+		canvas
+			setPaint: meshPaint;
+			setShape: (-100 @ -100 extent: 300@300);
+			draw
+	].
+
+	surface asForm asMorph openInWindow
 ]
 
 { #category : #examples }
@@ -551,7 +644,7 @@ AthensSurfaceExamples class >> exampleDrawForm [
 		can pathTransform translateX: 30 Y: 30. 
 		can draw ].
 	
-	surf asForm asMorph openInWindow
+	surf asMorph openInWindow
 ]
 
 { #category : #examples }
@@ -573,7 +666,7 @@ AthensSurfaceExamples class >> exampleDrawForm2 [
 		can paintTransform scaleBy: 3; rotateByDegrees: 30.
 		can draw ].
 	
-	surf asForm asMorph openInWindow
+	surf asMorph openInWindow
 ]
 
 { #category : #examples }
@@ -597,8 +690,84 @@ AthensSurfaceExamples class >> exampleDrawText [
 		can pathTransform translateX: 0 Y: (font getPreciseAscent).
 		can drawString: 'Hello Athens!' ].
 	
-	surf asForm asMorph openInWindow
+	surf asMorph openInWindow
 
+]
+
+{ #category : #examples }
+AthensSurfaceExamples class >> exampleGouraudTriangle [
+	| surface meshPaint |
+	surface := AthensCairoSurface extent: 512@512.
+	meshPaint := MeshGradientPaint new
+		addTriangleWithPoints: { 256@50 . 450@450 . 50@450 }
+			colors: { Color red . Color green . Color blue}.
+			
+	surface drawDuring: [ :canvas |
+		canvas surface clear: Color white.
+		
+		canvas
+			setPaint: meshPaint;
+			setShape: (50@50 extent: 400@400);
+			draw
+	].
+
+	surface asForm asMorph openInWindow
+]
+
+{ #category : #examples }
+AthensSurfaceExamples class >> exampleGouraudTriangle2 [
+	| surface meshPaint |
+	surface := AthensCairoSurface extent: 512@512.
+	meshPaint := MeshGradientPaint new
+		buildPatchWith: [ :patchBuilder |
+			patchBuilder
+				moveTo: 256@50;
+				lineTo: 450@450;
+				lineTo: 50@450;
+				colors: { Color red . Color green . Color blue}
+		].
+			
+	surface drawDuring: [ :canvas |
+		canvas surface clear: Color white.
+		
+		canvas
+			setPaint: meshPaint;
+			setShape: (50@50 extent: 400@400);
+			draw
+	].
+
+	surface asForm asMorph openInWindow
+]
+
+{ #category : #examples }
+AthensSurfaceExamples class >> exampleNestedClip [
+
+	| surf |
+	surf := self newSurface: 100@100.
+	
+	surf drawDuring: [:can |
+		surf clear.
+		can pathTransform loadIdentity.
+		can setPaint: (Color blue).
+		can drawShape: (0@0 corner: 100@ 100).
+
+		can pathTransform translateX: -20 Y: -20.
+		can clipBy: (20@20 corner: 80@80) during: [
+			can pathTransform
+				translateX: 20 Y: 20;
+				rotateByDegrees: -20.
+			can setPaint: (Color red).
+			can drawShape: (0@0 corner: 100@ 100).
+
+			can clipBy: (20@20 corner: 80@80) during: [
+				can pathTransform translateX: 20 Y: 20.
+				can setPaint: (Color green).
+				can drawShape: (0@0 corner: 100@ 100).
+			]
+		]
+	].
+
+	surf asMorph openInWindow
 ]
 
 { #category : #examples }
@@ -620,7 +789,7 @@ AthensSurfaceExamples class >> exampleStrokeRect [
 		]	
 	].
 
-	surf asForm asMorph openInWindow
+	surf asMorph openInWindow
 ]
 
 { #category : #examples }
@@ -633,7 +802,7 @@ AthensSurfaceExamples class >> exampleUseForm [
 	form getCanvas fillRectangle: (20@20 corner: 50@50)  color: (Color blue).
 	
 	surf := AthensCairoSurface fromForm: form.
-	surf asForm asMorph openInWindow
+	surf asMorph openInWindow
 
 ]
 

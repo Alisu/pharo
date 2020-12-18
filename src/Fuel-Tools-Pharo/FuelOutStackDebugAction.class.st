@@ -42,19 +42,9 @@ FuelOutStackDebugAction class >> encodeDebugInformationOn: aSerializer [
 ]
 
 { #category : #serialization }
-FuelOutStackDebugAction class >> serializeTestFailureContext: aContext toFileNamed: aFilename [
-	| serializer |
-	
-	serializer := FLSerializer newDefault.
-	self encodeDebugInformationOn: serializer. 
-	serializer addPostMaterializationAction: [ :materialization | | session |
-		session := Processor activeProcess newDebugSessionNamed: 'External stack' startedAt: materialization root.
-		Smalltalk tools debugger openOn: session withFullView: true].
-		
-	serializer
-		" use the sender context, generally the current context is not interesting"
-		serialize: aContext
-		toFileNamed: aFilename
+FuelOutStackDebugAction class >> serializeTestFailureContext: aContext [
+
+	FLDebuggerStackSerializer new serializeStackFromContext: aContext
 ]
 
 { #category : #accessing }
@@ -72,7 +62,7 @@ FuelOutStackDebugAction >> defaultOrder [
 { #category : #actions }
 FuelOutStackDebugAction >> executeAction [
 
-	self serializeStack
+	self class serializeTestFailureContext: self interruptedContext copyStack
 ]
 
 { #category : #accessing }
@@ -84,25 +74,4 @@ FuelOutStackDebugAction >> help [
 FuelOutStackDebugAction >> id [
 
 	^ #fuelOutStack
-]
-
-{ #category : #actions }
-FuelOutStackDebugAction >> serializeStack [
-	| date fileName |
-	"Serialize a portion of the current stack trace using fuel.."
-	date := DateAndTime now.
-	
-	fileName := String streamContents: [ :s|
-		s 
-			<< 'Debugger-Stack-';
-			<< self interruptedContext receiver class instanceSide name;
-			<< '-'.
-		date printYMDOn: s.
-		s 
-			<< '-'; print: date hour24; print: date minute; print: date second;
-			<< '.fuel'].
-
-	self class
-		serializeTestFailureContext: self interruptedContext copyStack		
-		toFileNamed: fileName
 ]

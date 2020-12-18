@@ -27,10 +27,10 @@ ClyTypedQueryTestCase >> testComparisonOfSimilarQueriesWithDifferentScopes [
 	query2 := self createQuery.
 	query scope: (ClyScopeExample of: #basisObject1 in: environment).
 	query2 scope: (ClyScopeExample of: #basisObject2 in: environment).
-	self deny: query = query2.
-	
+	self deny: query equals: query2.
+
 	query2 scope: (ClyScopeExample2 of: #basisObject1 in: environment).
-	self deny: query = query2
+	self deny: query equals: query2
 ]
 
 { #category : #tests }
@@ -136,7 +136,7 @@ ClyTypedQueryTestCase >> testForbidCreationOnScopeWhichNotSupportIt [
 
 	[query scope: (ClyCompositeScope in: environment).
 	self assert: false description: 'Query should be supported by scope'
-	] ifError: [].
+	] onErrorDo: [].
 	
 ]
 
@@ -145,7 +145,7 @@ ClyTypedQueryTestCase >> testForbidCreationOnScopeWithoutEnvironment [
 	[ 
 		query scope: (ClyScopeExample ofAll: {}).
 		self assert: false description: 'Query should be only created on scope bound to concrete environment']
-			ifError: [  ]
+			onErrorDo: [  ]
 ]
 
 { #category : #tests }

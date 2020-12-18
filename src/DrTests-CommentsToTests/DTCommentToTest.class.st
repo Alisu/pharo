@@ -5,7 +5,7 @@ I create tests from executable comments and run these tests.
 Class {
 	#name : #DTCommentToTest,
 	#superclass : #DrTestsPlugin,
-	#category : #'DrTests-CommentsToTests'
+	#category : #'DrTests-CommentsToTests-Base'
 }
 
 { #category : #'api - accessing' }
@@ -43,8 +43,8 @@ DTCommentToTest >> itemsToBeAnalysedFor: packagesSelected [
 				select: [ :c | 
 					c methods
 						anySatisfy: [ :m | 
-							(m methodClass compiledMethodAt: m selector) comments
-								anySatisfy: [ :com | com includesSubstring: '>>>' ] ] ] ]
+							( m sourceCode includesSubstring: '>>>') and: [
+								m comments anySatisfy: [ :com | com includesSubstring: '>>>' ] ] ] ]]
 ]
 
 { #category : #api }
@@ -55,18 +55,18 @@ DTCommentToTest >> packagesAvailableForAnalysis [
 
 { #category : #accessing }
 DTCommentToTest >> pragmaForResultTrees [
-	^ #'dTCommentToTestResultTreeNamed:'
+	^ #'dtCommentToTestResultTreeNamed:order:'
 ]
 
 { #category : #api }
 DTCommentToTest >> resultButtonHelp [
-	^ 'Browse the test selected in the results list.' translated
+	^ 'Browse the test selected in the result list.'
 ]
 
 { #category : #api }
 DTCommentToTest >> runForConfiguration: aDTpluginConfiguration [
 	^ self pluginResultClass new
-			testsResult: (self runTestSuites: {aDTpluginConfiguration asTestSuite});
+			testResults: (self runTestSuites: {aDTpluginConfiguration asTestSuite});
 			yourself
 ]
 
@@ -101,7 +101,7 @@ DTCommentToTest >> secondListLabel [
 
 { #category : #api }
 DTCommentToTest >> startButtonHelp [
-	^ 'Run tests selected.' translated
+	^ 'Run selected tests.' 
 ]
 
 { #category : #api }

@@ -1,7 +1,7 @@
 "
-A RBComment represents a text comment associated to an AST node.
+An RBComment represents a text comment associated with an AST node.
 
-A RBComment is not an AST-Node (not subclass of program node). But its instance are just wrapping the comment text and (start-) position.
+An RBComment is not an AST-Node (not a subclass of program node). But its instances are just wrapping the comment text and (start-) position.
 
 Due to the way the parser handles comments, the RBComment is assigned to its preceding (real) AST node, although we often write the comment prior to a statement.
 
@@ -25,20 +25,37 @@ instance variables
 "
 Class {
 	#name : #RBComment,
-	#superclass : #RBNode,
+	#superclass : #RBProgramNode,
 	#instVars : [
 		'contents',
-		'start'
+		'start',
+		'stop'
 	],
 	#category : #'AST-Core-Nodes'
 }
 
 { #category : #'instance creation' }
-RBComment class >> with: aString at: startPosition [
+RBComment class >> with: aCommentToken [
+	"To respect the previously implemented comment node content, 
+	 we strip the surrounding quotes of the comment."
 	^ self new
-		with: aString at: startPosition;
+		with: aCommentToken value from: aCommentToken start to: aCommentToken stop;
 		yourself. 
-	
+]
+
+{ #category : #'instance creation' }
+RBComment class >> with: aString at: startPosition [
+
+	^ self with: (RBCommentToken
+			   value: aString
+			   start: startPosition
+			   stop: startPosition + aString size - 1)
+]
+
+{ #category : #comparing }
+RBComment >> = anObject [
+	self == anObject ifTrue: [ ^true ].
+	^ self class = anObject class ifTrue: [ self contents = anObject contents ] ifFalse: [ false ]
 ]
 
 { #category : #visiting }
@@ -56,12 +73,14 @@ RBComment >> contents [
 	^ contents
 ]
 
+{ #category : #comparing }
+RBComment >> hash [
+	^ self contents hash
+]
+
 { #category : #testing }
-RBComment >> intersectsInterval: anInterval [ 
-	"Make comments polymorphic with program nodes for hit detection"
-	
-	^(anInterval first between: self start and: self stop) 
-		or: [ self start between: anInterval first and: anInterval last ]
+RBComment >> isCommentNode [ 
+	^true
 ]
 
 { #category : #printing }
@@ -72,7 +91,7 @@ RBComment >> printOn: aStream [
 	aStream nextPutAll: '" '.
 ]
 
-{ #category : #accessing }
+{ #category : #enumeration }
 RBComment >> size [
 	^ contents size + 2 "must take into account quotation marks"
 ]
@@ -84,12 +103,26 @@ RBComment >> start [
 
 { #category : #accessing }
 RBComment >> stop [
-	^ start + self size - 1
+	^ stop ifNil: [ start + self size - 1 ]
+			 ifNotNil: [ stop ].
 ]
 
 { #category : #initialization }
 RBComment >> with: aString at: startPosition [
-	start := startPosition.
-	contents := aString
+	self
+		deprecated: 'The use of a comment token implies a preexisting stop position. 
+	                  Should use with: from: to:'
+		transformWith: '`@receiver with: `@aString at: `@startPosition'
+			-> '`@receiver with: `@aString from: `@startPosition to: `@startPosition + `@aString size - 1'.
+	
+	^ self with: aString from: startPosition to: startPosition + aString size - 1
+
+]
+
+{ #category : #'instance creation' }
+RBComment >> with: aString from: aStartPosition to: aStopPosition [
+	start := aStartPosition.
+	stop := aStopPosition.
+	contents := aString.
 
 ]

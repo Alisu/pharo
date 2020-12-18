@@ -46,12 +46,10 @@ BaselineOfPharoBootstrap class >> packagesRecursiveIn: aGroupName [
 
 	| allMembers allPackagesInBaseline packages groups |
 	allMembers := self version groups detect: [ :g | g name = aGroupName ].
-	allPackagesInBaseline := self version packages collect: #name.
-	
+	allPackagesInBaseline := self version packages collect: [ :each | each name ].
 	packages := allMembers includes select: [ :aName | allPackagesInBaseline includes: aName ].
-	groups := allMembers includes reject: [ :aName | allPackagesInBaseline includes: aName ].
-		
-	^ packages , (groups flatCollect: [:aInnerGroupName | self packagesRecursiveIn: aInnerGroupName]).
+	groups := allMembers includes reject: [ :aName | allPackagesInBaseline includes: aName ].		
+	^ packages , (groups flatCollect: [ :aInnerGroupName | self packagesRecursiveIn: aInnerGroupName ]).
 
 ]
 
@@ -96,12 +94,11 @@ BaselineOfPharoBootstrap >> baseline: spec [
 		spec package: 'Kernel'.
 		spec package: 'Kernel-BytecodeEncoders'.
 		spec package: 'Kernel-Chronology-Extras'.
+		spec package: 'NumberParser'.
 
 		spec package: 'Math-Operations-Extensions'.
 
-		spec package: 'Multilingual-Languages'.
 		spec package: 'Multilingual-Encodings'.
-		spec package: 'Multilingual-TextConversion'.
 
 		spec package: 'Network-UUID'.
 		
@@ -123,6 +120,7 @@ BaselineOfPharoBootstrap >> baseline: spec [
 		spec package: 'System-Platforms'.
 		spec package: 'System-SessionManager'.
 		spec package: 'System-Sources'.
+		spec package: 'System-SourcesCondenser'.
 		spec package: 'System-Support'.
 
 		spec package: 'UIManager'.
@@ -130,6 +128,7 @@ BaselineOfPharoBootstrap >> baseline: spec [
 		
 		spec package: 'FFI-Kernel'.
 		spec package: 'FFI-Pools'.
+		spec package: 'FFI-OldFFIBackend'.
 		
 		spec package: 'CodeExport'.
 		spec package: 'CodeImport'.
@@ -140,7 +139,6 @@ BaselineOfPharoBootstrap >> baseline: spec [
 		
 		spec package: 'FileSystem-Core'.
 		spec package: 'FileSystem-Disk'.
-		spec package: 'DeprecatedFileStream'.
 
 		spec package: 'SUnit-Core'.
 		spec package: 'SUnit-Tests'.
@@ -152,6 +150,7 @@ BaselineOfPharoBootstrap >> baseline: spec [
 		spec group: 'KernelGroup' with: {
 			'FFI-Kernel'.
 			'FFI-Pools'.
+			'FFI-OldFFIBackend'.
 			'Announcements-Core'.
 			'Colors'.
 			'Collections-Abstract'.
@@ -187,6 +186,7 @@ BaselineOfPharoBootstrap >> baseline: spec [
 			'System-SessionManager'.
 			'System-Sources'.
 			'System-Support'.
+			'NumberParser'.
 
 			'UIManager'.
 			'Zinc-Character-Encoding-Core' }.
@@ -202,9 +202,7 @@ BaselineOfPharoBootstrap >> baseline: spec [
 		}.
 
 		spec group: 'MultilingualGroup' with: {
-			'Multilingual-Languages'.
-			'Multilingual-Encodings'.
-			'Multilingual-TextConversion'}.
+			'Multilingual-Encodings' }.
 
 		spec group: 'CompilerGroup' with: {
 			'AST-Core'.
@@ -214,12 +212,12 @@ BaselineOfPharoBootstrap >> baseline: spec [
 			'CodeImport'.
 			'CodeImportCommandLineHandlers'.
 			'Jobs'.
+			'System-SourcesCondenser'.
 			'OpalCompiler-Core'}.
 		
 		spec group: 'FileSystemGroup' with: {
 			'FileSystem-Core'.
-			'FileSystem-Disk'.
-			'DeprecatedFileStream' }.
+			'FileSystem-Disk'}.
 
 		spec group: 'ToLoadByHermes' with: {
 			'AdditionalPackages'.

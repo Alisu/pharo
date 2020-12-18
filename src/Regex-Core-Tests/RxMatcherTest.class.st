@@ -1068,18 +1068,14 @@ RxMatcherTest >> testMatches [
 RxMatcherTest >> testMatchesIn [
 	| matcher |
 	matcher := self matcherClass forString: '\w+'.
-	self assert: (matcher matchesIn: 'now is the time') asArray 
-		= #('now' 'is' 'the' 'time')
+	self assert: (matcher matchesIn: 'now is the time') asArray equals: #('now' 'is' 'the' 'time')
 ]
 
 { #category : #'testing-protocol' }
 RxMatcherTest >> testMatchesInCollect [
 	| matcher |
 	matcher := self matcherClass forString: '\w+'.
-	self assert: (matcher
-		matchesIn: 'now is the time'
-		collect: [ :each | each reversed ]) asArray
-			= #('won' 'si' 'eht' 'emit')
+	self assert: (matcher matchesIn: 'now is the time' collect: [ :each | each reversed ]) asArray equals: #('won' 'si' 'eht' 'emit')
 ]
 
 { #category : #'testing-protocol' }
@@ -1087,7 +1083,7 @@ RxMatcherTest >> testMatchesInDo [
 	| matcher expected |
 	matcher := self matcherClass forString: '\w+'.
 	expected := #('now' 'is' 'the' 'time') asOrderedCollection.
-	matcher matchesIn: 'now is the time' do: [ :each | self assert: each = expected removeFirst ].
+	matcher matchesIn: 'now is the time' do: [ :each | self assert: each equals: expected removeFirst ].
 	self assertEmpty: expected
 ]
 
@@ -1095,18 +1091,14 @@ RxMatcherTest >> testMatchesInDo [
 RxMatcherTest >> testMatchesOnStream [
 	| matcher |
 	matcher := self matcherClass forString: '\w+'.
-	self assert: (matcher matchesOnStream: 'now is the time' readStream) asArray 
-		= #('now' 'is' 'the' 'time')
+	self assert: (matcher matchesOnStream: 'now is the time' readStream) asArray equals: #('now' 'is' 'the' 'time')
 ]
 
 { #category : #'testing-protocol' }
 RxMatcherTest >> testMatchesOnStreamCollect [
 	| matcher |
 	matcher := self matcherClass forString: '\w+'.
-	self assert: (matcher 
-		matchesOnStream: 'now is the time' readStream 
-		collect: [ :each | each reversed ]) asArray
-			= #('won' 'si' 'eht' 'emit')
+	self assert: (matcher matchesOnStream: 'now is the time' readStream collect: [ :each | each reversed ]) asArray equals: #('won' 'si' 'eht' 'emit')
 ]
 
 { #category : #'testing-protocol' }
@@ -1114,7 +1106,7 @@ RxMatcherTest >> testMatchesOnStreamDo [
 	| matcher expected |
 	matcher := self matcherClass forString: '\w+'.
 	expected := #('now' 'is' 'the' 'time') asOrderedCollection.
-	matcher matchesOnStream: 'now is the time' readStream do: [ :each | self assert: each = expected removeFirst ].
+	matcher matchesOnStream: 'now is the time' readStream do: [ :each | self assert: each equals: expected removeFirst ].
 	self assertEmpty: expected
 ]
 
@@ -1133,8 +1125,8 @@ RxMatcherTest >> testMatchingRangesIn [
 	expected := #(1 3 5 6 8 10 12 15) asOrderedCollection.
 	(matcher matchingRangesIn: 'now is the time')
 		do: [ :range | 
-			self assert: range first = expected removeFirst.
-			self assert: range last = expected removeFirst ].
+			self assert: range first equals: expected removeFirst.
+			self assert: range last equals: expected removeFirst ].
 	self assertEmpty: expected
 ]
 
@@ -1213,6 +1205,25 @@ RxMatcherTest >> testStringCopyWithRegexMatchesTranslatedUsing [
 		matchesTranslatedUsing: [ :each | 
 			self assert: each equals: 'bb'.
 			'X' ]) equals: 'aaXcc'
+]
+
+{ #category : #tests }
+RxMatcherTest >> testStringGreedyMatchesRegex [
+
+	self assert: ('199' matchesRegex: '([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])').
+	self assert: ('25' matchesRegex: '([0-9]|[1-9][0-9])').
+	self assert: ('25' matchesRegex: '([1-9][0-9]|[0-9])').
+	self assert: ('25' matchesRegex: '(\d\d|\d)').
+	self assert: ('25' matchesRegex: '(\d|\d\d)').
+	self assert: ('bb' matchesRegex: '([a-z]|[b-z][a-z])').
+	self assert: ('b' matchesRegex: '([b-z][a-z]|[a-z])').
+	self assert: ('15' matchesRegex: '[1-9]|1[0-9]').
+	self assert: ('b' matchesRegex: '(b|bb)').
+	self assert: ('b' matchesRegex: '(bb|b)').
+	self assert: ('fooABCD' matchesRegex: '.*(ABCD|BC)').
+	self assert: ('fooBC' matchesRegex: '.*(ABCD|BC)').
+	self assert: ('fooB' matchesRegex: '.*(ABC|B)').
+	self assert: ('fooABC' matchesRegex: '.*(ABC|B)').	
 ]
 
 { #category : #'testing-extensions' }

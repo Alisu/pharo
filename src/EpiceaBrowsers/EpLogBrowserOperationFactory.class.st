@@ -17,11 +17,11 @@ Class {
 { #category : #public }
 EpLogBrowserOperationFactory >> applyCodeChanges [
 	"Note: This method is intended to be used from EpLogBrowser's preview mode, where the code changes were previously transformed at #newApplyPreviewLog."
-
+	
 	self
 		trigger: [ 
 			self entries do: [:each |
-				self handleErrorDuring: [ 
+				self handleErrorDuring: [
 					each content applyCodeChange ]]] 
 		with: self newApplyEvent
 ]
@@ -99,7 +99,7 @@ EpLogBrowserOperationFactory >> latestEventsFrom: previewEventsTheOldestFirst [
 	"TODO: move method"
 	
 	| aLog filter |
-	aLog := EpLog newWithStore: (OmMemoryStore withAll: previewEventsTheOldestFirst).
+	aLog := EpLog newWithStore: (OmMemoryStore withAllContents: previewEventsTheOldestFirst).
 	logBrowserModel := EpLogBrowserPresenter newWithLog: aLog.
 	filter := EpLatestCodeChangeFilter new
 		logBrowserModel: logBrowserModel;

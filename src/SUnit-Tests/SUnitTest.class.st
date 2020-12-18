@@ -186,7 +186,7 @@ SUnitTest >> testDefects [
 	suite addTest: (error := self class selector: #error).
 	suite addTest: (failure := self class selector: #fail).
 	result := suite run.
-	self assert: result defects asArray = (Array with: error with: failure).
+	self assert: result defects asArray equals: (Array with: error with: failure).
 	self
 		assertForTestResult: result
 		runCount: 2
@@ -261,7 +261,7 @@ SUnitTest >> testException [
 SUnitTest >> testExecutionEnvironmentShouldBeInstalled [
 
 	| env |
-	env := CurrentExecutionEnvironment value.
+	env := self executionEnvironment.
 
 	self assert: env class equals: TestExecutionEnvironment.
 	self assert: env testCase equals: self
@@ -285,7 +285,7 @@ SUnitTest >> testExpectedFailure [
 
 { #category : #testing }
 SUnitTest >> testExpectedFailureDetection [
-	self assert: self expectedFailures size = 2.
+	self assert: self expectedFailures size equals: 2.
 	self assert: (self expectedFailures includesAll: #(expectedFailureFails expectedFailurePasses))
 ]
 
@@ -419,11 +419,12 @@ SUnitTest >> testGreenTestThenLongRunningTest [
 ]
 
 { #category : #testing }
-SUnitTest >> testHangedChildProcessTest [
+SUnitTest >> testHangedChildProcessTestWhenItIsAllowedToLeaveProcessesAfterTest [
 
 	| case result hangedProcess |
 
 	case := self class selector: #hangedChildProcessTest.	
+	case executionProcessMonitor allowTestToLeaveProcesses.
 	result := case run.
 
 	self
@@ -436,6 +437,23 @@ SUnitTest >> testHangedChildProcessTest [
 	hangedProcess := Process allInstances 
 		detect: [: each | each name = #hangedChildProcessTest] ifNone: [ ^self ].
 	self assert: hangedProcess isTerminated
+]
+
+{ #category : #testing }
+SUnitTest >> testHangedChildProcessTestWhenLeftProcessIsConsideredAsFailure [
+
+	| case result |
+
+	case := self class selector: #hangedChildProcessTest.	
+	case executionProcessMonitor failTestLeavingProcesses.
+	result := case run.
+
+	self
+		assertForTestResult: result
+		runCount: 1
+		passed: 0
+		failed: 0
+		errors: 1
 ]
 
 { #category : #testing }
@@ -624,7 +642,7 @@ SUnitTest >> testSuite [
 { #category : #testing }
 SUnitTest >> testWatchDogProcessShouldNotBeCatchedAsForkedProcess [
 	| env |
-	env := CurrentExecutionEnvironment value.
+	env := self executionEnvironment.
 
 	self assertEmpty: env forkedProcesses
 ]

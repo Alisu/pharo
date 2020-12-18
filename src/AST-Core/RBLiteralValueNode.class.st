@@ -1,7 +1,7 @@
 "
 RBLiteralNode is an AST node that represents literal values (e.g., #foo, true, 1, etc.), but not literal arrays.
 
-The sourceText field is needed for the formatter for the correct printing of strings vs. symbols. If we just call
+The sourceText field is needed for the formatter for the correct printing of strings vs symbols. If we just call
 value asString, both a string and a symbol print itself as a string.
 
 Instance Variables
@@ -54,6 +54,18 @@ RBLiteralValueNode >> copyInContext: aDictionary [
 	^ self class value: self value
 ]
 
+{ #category : #evaluating }
+RBLiteralValueNode >> evaluateForContext: aContext [
+
+	^ value
+]
+
+{ #category : #evaluating }
+RBLiteralValueNode >> evaluateForReceiver: aReceicer [
+
+	^ value
+]
+
 { #category : #accessing }
 RBLiteralValueNode >> sourceText [
 	^ sourceText ifNil: [
@@ -61,7 +73,7 @@ RBLiteralValueNode >> sourceText [
 			value isSymbol
 				ifTrue: [
 					aStream nextPut: $#.
-					((RBScanner isSelector: value) and: [value ~~ #'||']) 
+					((value isValidSelector) and: [value ~~ #'||']) 
 						ifTrue: [aStream nextPutAll: value]
 						ifFalse: [value asString printOn: aStream]]
 				ifFalse: [ 

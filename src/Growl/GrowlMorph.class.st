@@ -27,7 +27,6 @@ Class {
 		'contentsColor'
 	],
 	#classVars : [
-		'DefaultBackgroundColor',
 		'Position',
 		'Type'
 	],
@@ -66,7 +65,7 @@ GrowlMorph class >> growlSettingsOn: aBuilder [
 			(aBuilder pickOne: #position)
 				label: 'Popup position';
 				target: self;
-				default: #topRight;
+				default: #bottomLeft;
 				order: 2;
 				domainValues: self growlPositionChoices.]
 ]
@@ -350,11 +349,10 @@ GrowlMorph >> nextColorStep: aColor [
 	^ aColor alpha: self alpha
 ]
 
-{ #category : #display }
-GrowlMorph >> openInWorld [
+{ #category : #opening }
+GrowlMorph >> preOpenInWorld: aWorld [
 
-	self position: self unoccupiedPosition.
-	^super openInWorld
+	self position: self unoccupiedPosition
 ]
 
 { #category : #internal }
@@ -372,7 +370,7 @@ GrowlMorph >> resetVanishTimer [
 { #category : #stepping }
 GrowlMorph >> step [
 
-	(self containsPoint: ActiveHand position) ifTrue: [
+	(self containsPoint: self activeHand position) ifTrue: [
 		self resetAlpha.
 		^ self].
 	vanishTime ifNotNil: [DateAndTime now < vanishTime ifTrue: [^self]].

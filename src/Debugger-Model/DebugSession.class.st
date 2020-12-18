@@ -26,61 +26,14 @@ Class {
 		'name',
 		'interruptedContext',
 		'interruptedProcess',
-		'errorWasInUIProcess'
+		'errorWasInUIProcess',
+		'exception'
 	],
 	#classVars : [
 		'LogDebuggerStackToFile'
 	],
-	#category : #'Debugger-Model-Base'
+	#category : #'Debugger-Model-Core'
 }
-
-{ #category : #'actions registration' }
-DebugSession class >> debuggingActionsForPragma: aSymbol for: aDebugger [
-	^ (DebugAction allSubclasses reject: [ :each | each hasAbstractMethods ])
-		inject: OrderedCollection new
-		into: [ :currentActions :aClass | 
-			currentActions
-				addAll: (self debuggingActionsFromClass: aClass forPragma: aSymbol forDebugger: aDebugger);
-				yourself ]
-]
-
-{ #category : #'actions registration' }
-DebugSession class >> debuggingActionsForPragmas: aSymbolsCollection for: aDebugger [
-	self flag: 'split me'.
-	^ (((aSymbolsCollection 
-		inject: OrderedCollection new
-		into: [ :currentActions :aSymbol | 
-			currentActions 
-				addAll: (self debuggingActionsForPragma: aSymbol for: aDebugger);
-				yourself ]) 
-					select: [ :aDebugAction | 
-						aDebugAction appliesToDebugger: aDebugger ]) 
-					collect: [ :aDebugAction | 
-						aDebugAction
-							forDebugger: aDebugger;
-							yourself ]) 
-					sort: [ :action1 :action2 | 
-						action1 order < action2 order ]
-]
-
-{ #category : #'actions registration' }
-DebugSession class >> debuggingActionsFromClass: aClass forPragma: aSymbol forDebugger: aDebugger [
-	| pragmas actions |
-	pragmas := Pragma
-		allNamed: aSymbol
-		from: aClass class
-		to: aClass class.
-	actions := OrderedCollection new.
-	pragmas
-		do: [ :aPragma | 
-			actions
-				addAll:
-					((aPragma methodClass soleInstance
-						perform: aPragma methodSelector
-						withEnoughArguments: {aDebugger}) asOrderedCollection
-						collect: [ :each | each asDebugAction ]) ].
-	^ actions
-]
 
 { #category : #settings }
 DebugSession class >> logDebuggerStackToFile [
@@ -104,6 +57,7 @@ DebugSession class >> named: aString on: aProcess startedAt: aContext [
 DebugSession >> clear [
 	"If after resuming the process the user does plan to reuse this session with
 	the same process, it should call this method."
+	exception := nil.
 	interruptedProcess := nil.
 	self updateContextTo: nil
 ]
@@ -152,6 +106,16 @@ DebugSession >> errorWasInUIProcess [
 DebugSession >> errorWasInUIProcess: aBoolean [
 
 	errorWasInUIProcess := aBoolean
+]
+
+{ #category : #accessing }
+DebugSession >> exception [ 
+	^ exception
+]
+
+{ #category : #accessing }
+DebugSession >> exception: anObject [
+	exception := anObject
 ]
 
 { #category : #evaluating }
@@ -248,7 +212,7 @@ DebugSession >> isTestObject: anObject [
 DebugSession >> logStackToFileIfNeeded [
 	self class logDebuggerStackToFile ifFalse: [ ^self ].
 	
-	[[Smalltalk logError: name inContext: interruptedContext  ] ifError: [ ]]
+	[[Smalltalk logError: name inContext: interruptedContext  ] onErrorDo: [ ]]
 		valueWithin: 100 milliSeconds onTimeout: [  ]
 ]
 
@@ -341,11 +305,11 @@ DebugSession >> restart: aContext [
 	"Closing now depends on a setting (RestartAlsoProceeds class variable) --> not supported in this version"
 
 	(self isContextPostMortem: aContext) ifTrue: [^ self].
-	self unwindAndRestartToContext: aContext.
-	
+
 	"Issue 3015 - Hernan"
 	self isInterruptedContextATest ifTrue: [ self prepareTestToRunAgain ].
-	
+	self unwindAndRestartToContext: aContext.	
+
 	self triggerEvent: #restart		
 	
 ]
@@ -419,29 +383,6 @@ DebugSession >> returnValue: anObject from: aContext [
 	self contextChanged 
 ]
 
-{ #category : #'debugging actions' }
-DebugSession >> returnValueFrom: aContext [
-	"Force a return of a given value to the previous context!"
-
-	| previous expression value |
-	self flag: 'should be called only on the selected context'.	
-	self flag: 'remove me'.
-	(self isContextPostMortem: aContext) ifTrue: [^ self].
-	
-	expression := UIManager default request: 'Enter expression for return value:'.
-	value := self class compiler
-					source: expression;
-			context: aContext;
-			receiver: aContext receiver;
-			evaluate.
-				
-	previous := aContext sender.
-	"self resetContext: previous."
-	interruptedProcess popTo: previous value: value.
-	self updateContextTo: previous.
-	self contextChanged 
-]
-
 { #category : #evaluating }
 DebugSession >> rewindContextToMethod: aMethod fromContext: aContext [
 	"this method is typically to be used after a hot compilation of a method from the stack.
@@ -492,24 +433,12 @@ DebugSession >> shouldDisplayContext: aContext basedOnFilters: stackFilters [
 	
 ]
 
-{ #category : #context }
-DebugSession >> shouldDisplayOnTopContext: aContext [
-	
-	^ aContext method selector ~= #halt
-]
-
 { #category : #logging }
 DebugSession >> signalDebuggerError: anError [
 
-	self primitiveError:
-							'Original error: ' , name asString
-								,
-									'.
-	Smalltalk tools debugger error: '
-								,
-									([ anError description ]
-										on: Error
-										do: [ 'a ' , anError class printString ]) , ':' 
+	DebuggerSettings emergencyDebugger
+		debugError: anError
+		fromSession: self
 ]
 
 { #category : #accessing }

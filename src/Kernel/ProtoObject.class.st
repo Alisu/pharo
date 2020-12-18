@@ -190,6 +190,11 @@ ProtoObject >> instVarsInclude: anObject [
 ]
 
 { #category : #testing }
+ProtoObject >> isImmediateObject [
+	^ self class isImmediateClass
+]
+
+{ #category : #testing }
 ProtoObject >> isNil [
 	"Coerces nil to true and everything else to false."
 
@@ -210,6 +215,42 @@ ProtoObject >> modificationForbiddenFor: selector value: value [
 	^ self modificationForbiddenFor: selector index: nil value: value 
 	
 
+]
+
+{ #category : #'block support' }
+ProtoObject >> mustBeBoolean [
+	"Catches attempts to test truth of non-Booleans.  This message is sent from the VM.  The sending context is rewound to just before the jump causing this exception."
+	^ Boolean mustBeBooleanDeOptimize
+		ifTrue: [ self mustBeBooleanDeOptimizeIn: thisContext sender  ]
+		ifFalse: [ self mustBeBooleanIn: thisContext sender ]
+]
+
+{ #category : #'block support' }
+ProtoObject >> mustBeBooleanIn: context [
+	"context is the where the non-boolean error occurred. Rewind context to before jump then raise error."
+	
+	"Some constructs are optimized in the compiler :
+	#whileTrue:
+	#whileFalse:
+	#ifTrue:
+	#ifFalse:
+	#ifTrue:ifFalse:
+	#ifFalse:ifTrue:
+	So you cannot by default use them on non boolean objects."
+	
+	"If you really need to use optimized constructs, you can enable Opal compiler and do one of the following :
+		- recompile your method with the pragma : <compilerOptions: #(+ optIlineNone)>
+		- recompile your class with the method : MyClass class>>compiler 
+			^ super compiler options: #(+ optIlineNone)
+		- enable the option mustBeBooleanDeOptimize to call mustBeBooleanDeOptimizeIn: instead of this method "
+
+	| proceedValue |
+	
+	context skipBackBeforeJump.
+	proceedValue := NonBooleanReceiver new
+		object: self;
+		signal: 'proceed for truth.'.
+	^ proceedValue ~~ false
 ]
 
 { #category : #'memory scanning' }
@@ -238,18 +279,33 @@ ProtoObject >> pointersTo [
 ]
 
 { #category : #'pointing to' }
+ProtoObject >> pointersToAmong: aCollectionOfObjects [
+	"Meant to be used as: 
+	Smalltalk garbageCollect.
+	objs := SystemNavigation default allObjects.
+	anyObject pointersToAmong: objs.
+	otherObject pointersToAmong: objs.
+	
+	Avoid multiple calls to allObjects Primitive and multiple gcs.
+	"
+
+	^ self pointersToExcept: #() among: aCollectionOfObjects
+]
+
+{ #category : #'pointing to' }
 ProtoObject >> pointersToExcept: objectsToExclude [
 	"Find all objects in the system that hold a pointer to me, excluding those listed"
-	| c pointers objectsToAlwaysExclude |
+	| c pointers objectsToAlwaysExclude closure|
 	Smalltalk garbageCollect.
 	pointers := OrderedCollection new.
-
-	SystemNavigation default allObjectsDo: [ :e | (e pointsTo: self) ifTrue: [ pointers add: e ]  ].
+	closure := [ :e | (e pointsTo: self) ifTrue: [ pointers add: e ]  ].
+	SystemNavigation default allObjectsDo: closure.
 
 	objectsToAlwaysExclude := {
 		thisContext.
 		thisContext sender.
 		thisContext sender sender.
+		closure.
 		objectsToExclude.
 	}.
 	c := thisContext.
@@ -257,6 +313,29 @@ ProtoObject >> pointersToExcept: objectsToExclude [
 		(ea == thisContext sender) or: [ "warning: this expression is dependent on closure structure of this method"
 			(objectsToAlwaysExclude identityIncludes: ea)
 				or: [objectsToExclude identityIncludes: ea ]] ]) asArray
+]
+
+{ #category : #'pointing to' }
+ProtoObject >> pointersToExcept: objectsToExclude among: aCollectionOfObjects [
+	"Find all objects in the system that hold a pointer to me, excluding those listed.
+	This method is meant to be a faster solution if used several times on several objects rather than calling the GC multiples times.
+	See pointersToExcept: for usage.
+	"
+
+	| pointers objectsToAlwaysExclude |
+	pointers := OrderedCollection new.
+	pointers := aCollectionOfObjects select: [ :e | e pointsTo: self ].
+	objectsToAlwaysExclude := {thisContext.
+	thisContext sender.
+	thisContext sender sender.
+	objectsToExclude}.
+	^ (pointers
+		removeAllSuchThat: [ :ea | 
+			ea == thisContext sender
+				or:
+					[ "warning: this expression is dependent on closure structure of this method"
+					(objectsToAlwaysExclude identityIncludes: ea)
+						or: [ objectsToExclude identityIncludes: ea ] ] ]) asArray
 ]
 
 { #category : #'pointing to' }

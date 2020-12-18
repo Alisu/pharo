@@ -92,16 +92,15 @@ DateAndTime class >> current [
 
 { #category : #'instance creation queries' }
 DateAndTime class >> epoch [
-  "Answer a DateAndTime representing the Squeak epoch: 1 January 1901"
+  "Answer a DateAndTime representing the epoch: 1 January 1901"
 
   ^ (self julianDayNumber: SqueakEpoch) offset: 0.
   
 ]
 
 { #category : #'instance creation' }
-DateAndTime class >> fromSqueakTime: anInteger [
-	"Answer an instance of the receiver with the time represente by anInteger.
-	Squeak time is in the local timezone with an epoch of 1 Jan. 1901"
+DateAndTime class >> fromInternalTime: anInteger [
+	"Answer an instance of the receiver with the time represented by anInteger. Pharo internal time is an integer representing time in the local timezone with an epoch of 1 Jan. 1901"
 
 	^(self fromSeconds: anInteger offset: 0) translateTo: self localOffset.
 ]
@@ -189,7 +188,7 @@ DateAndTime class >> millisecondClockValue [
 
 { #category : #'instance creation' }
 DateAndTime class >> new [
-	"Answer a DateAndTime representing the Squeak epoch: 1 January 1901"
+	"Answer a DateAndTime representing the epoch: 1 January 1901"
 
 	^ self epoch offset: self localOffset 
 	
@@ -283,7 +282,7 @@ DateAndTime >> = other [
 { #category : #converting }
 DateAndTime >> asDate [
     "Convert the receiver in a date object."
-    "(DateAndTime fromString: ' 2019-08-17T13:33:00+02:00') asDate >>> (Date newDay: 17 month: 8 year: 2019)"
+    "(DateAndTime fromString: ' 2019-08-17T13:33:00+02:00') asDate printString >>> (Date newDay: 17 month: 8 year: 2019) printString"
     ^ Date starting: self
 ]
 

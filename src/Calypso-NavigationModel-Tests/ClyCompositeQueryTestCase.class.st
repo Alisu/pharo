@@ -33,68 +33,53 @@ ClyCompositeQueryTestCase >> subqueryFromScopeOf: aBasisObject [
 
 { #category : #tests }
 ClyCompositeQueryTestCase >> testCompareWithSimilarQueryWhichSubqueryHasDifferentScope [
-
 	| query2 |
-	query2 := self queryClass with: {self subqueryFromScopeOf: self class superclass}.
-	
-	self deny: query = query2
+	query2 := self queryClass with: {(self subqueryFromScopeOf: self class superclass)}.
+
+	self deny: query equals: query2
 ]
 
 { #category : #tests }
 ClyCompositeQueryTestCase >> testConvertingAsRestrictedByAnotherScope [
+
 	| convertedQuery restrictedScope |
 	restrictedScope := ClyScopeExample2 of: #restrictedBasis.
-
 	convertedQuery := query restrictedByScope: restrictedScope.
-
 	self assert: convertedQuery class equals: query class.
-	self assert: convertedQuery requiredResult == query requiredResult.
-	self
-		assert: (convertedQuery subqueries collect: #class)
-		equals: (query subqueries collect: #class).
-	self
-		assert: (convertedQuery subqueries collect: #scope)
-		equals:
-			(query subqueries
-				collect: [ :each | each scope withNewBasisObjects: #(restrictedBasis) ])
+	self assert: convertedQuery requiredResult identicalTo: query requiredResult.
+	self assert: (convertedQuery subqueries collect: [:each | each class]) equals: (query subqueries collect: #class).
+	self assert: (convertedQuery subqueries collect: [:each | each scope]) equals: (query subqueries collect: [ :each | each scope withNewBasisObjects: #(restrictedBasis) ])
 ]
 
 { #category : #tests }
 ClyCompositeQueryTestCase >> testConvertingWithNewScope [
 	| newScope convertedQuery |
 	newScope := ClyScopeExample2 of: #someBasis in: environment.
-	
+
 	convertedQuery := query withScope: newScope.
-	
+
 	self assert: convertedQuery class equals: query class.
-	self assert: convertedQuery requiredResult == query requiredResult.
-	self
-		assert: (convertedQuery subqueries collect: #class)
-		equals: (query subqueries collect: #class).
-	self
-		assert: (convertedQuery subqueries collect: #scope as: Set)
-		equals: {newScope} asSet
+	self assert: convertedQuery requiredResult identicalTo: query requiredResult.
+	self assert: (convertedQuery subqueries collect: [:each | each class]) equals: (query subqueries collect: #class).
+	self assert: (convertedQuery subqueries collect: [:each | each scope] as: Set) equals: {newScope} asSet
 ]
 
 { #category : #tests }
 ClyCompositeQueryTestCase >> testConvertingWithNewScopeBasis [
 	| convertedQuery |
 	convertedQuery := query withScopeOf: #(newBasis).
-	
+
 	self assert: convertedQuery class equals: query class.
-	self assert: convertedQuery requiredResult == query requiredResult.
-	self assert: (convertedQuery subqueries collect: #class) equals: (query subqueries collect: #class).
-	self 
-		assert: (convertedQuery subqueries collect: #scope) 
-		equals: (query subqueries collect: [:each | each scope withNewBasisObjects: #(newBasis)])
+	self assert: convertedQuery requiredResult identicalTo: query requiredResult.
+	self assert: (convertedQuery subqueries collect: [:each | each class]) equals: (query subqueries collect: #class).
+	self assert: (convertedQuery subqueries collect: [:each | each scope]) equals: (query subqueries collect: [ :each | each scope withNewBasisObjects: #(newBasis) ])
 ]
 
 { #category : #tests }
 ClyCompositeQueryTestCase >> testCreationWithEmptySubqueriesShouldReturnUnknownQuery [
-
 	query := self queryClass with: {}.
-	
-	self assert: query == ClyUnknownQuery instance
+
+	self assert: query identicalTo: ClyUnknownQuery instance
 ]
 
 { #category : #tests }
@@ -123,9 +108,8 @@ ClyCompositeQueryTestCase >> testHasCompositeScopeFromSubqueries [
 
 	| scope |
 	scope := query scope.
-	
 	self assert: scope class equals: ClyCompositeScope.
-	self assert: scope subscopes equals: (query subqueries collect: #scope).
+	self assert: scope subscopes equals: (query subqueries collect: [:each | each scope]).
 ]
 
 { #category : #tests }

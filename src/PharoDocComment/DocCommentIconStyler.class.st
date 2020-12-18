@@ -9,7 +9,6 @@ Class {
 
 { #category : #private }
 DocCommentIconStyler >> exampleIsFaulty: aNode [
-	<sampleInstance>
 	^ aNode comments
 		anySatisfy: [ :commentNode | commentNode pharoDocCommentNodes anySatisfy: [ :node |
 				node expression expressionCode isFaulty ]]
@@ -34,7 +33,7 @@ DocCommentIconStyler >> iconFor: aNode [
 		ifFalse: [ self iconNamed: #smallInfo ]
 ]
 
-{ #category : #testing }
+{ #category : #defaults }
 DocCommentIconStyler >> iconLabel: aNode [
 	^ (self exampleIsFaulty: aNode)
 		ifTrue: [ 'Faulty Example' ]
@@ -44,8 +43,7 @@ DocCommentIconStyler >> iconLabel: aNode [
 { #category : #private }
 DocCommentIconStyler >> notifySourceError: aNode [
 	"If a code in an example is faulty notify the user"
-	"kjkl>>>2"
-	"3 + 4 >>> 7"
+	
 	^ [ | examples faultyExample |
 		examples := aNode pharoDocCommentNodes.
 		faultyExample := examples detect: [ :example | example expression expressionCode isFaulty ].
@@ -65,8 +63,7 @@ DocCommentIconStyler >> runExampleBlock: aNode [
 DocCommentIconStyler >> shouldStyleNode: aNode [
 	^ self stylingEnabled
 		and: [ aNode isMethod
-				and: [ aNode comments isNotEmpty
-						and: [ aNode comments anySatisfy: [ :commentNode | commentNode pharoDocCommentNodes isNotEmpty ] ] ] ]
+				and: [ aNode comments anySatisfy: [ :commentNode | commentNode hasDocComment ] ] ] 
 ]
 
 { #category : #private }

@@ -4,8 +4,13 @@ I model the fact that a test passed.
 Class {
 	#name : #DTPass,
 	#superclass : #DTTestResultType,
-	#category : #'DrTests-TestsRunner'
+	#category : #'DrTests-TestsRunner-Results'
 }
+
+{ #category : #factory }
+DTPass class >> backgroundColor [
+	^ TestResult defaultColorBackGroundForPassingTest
+]
 
 { #category : #testing }
 DTPass >> isPass [

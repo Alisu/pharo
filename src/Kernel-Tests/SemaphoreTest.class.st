@@ -10,6 +10,12 @@ Class {
 	#category : #'Kernel-Tests-Processes'
 }
 
+{ #category : #coverage }
+SemaphoreTest >> classToBeTested [
+	
+	^ Semaphore
+]
+
 { #category : #private }
 SemaphoreTest >> criticalError [
 	Processor activeProcess terminate
@@ -44,7 +50,7 @@ SemaphoreTest >> testCritical [
 SemaphoreTest >> testCriticalIfError [
 	| lock |
 	lock := Semaphore forMutualExclusion.
-	[lock critical: [self criticalError ifError:[]]] forkAt: Processor userInterruptPriority.
+	[lock critical: [self criticalError onErrorDo:[]]] forkAt: Processor userInterruptPriority.
 	self assert: lock isSignaled
 ]
 
@@ -52,11 +58,12 @@ SemaphoreTest >> testCriticalIfError [
 SemaphoreTest >> testInCriticalWait [
 	"This tests whether a semaphore that has entered the wait in Semaphore>>critical:
 	leaves it without signaling the associated semaphore."
+
 	| s p |
 	s := Semaphore new.
-	p := [s critical:[]] fork.
+	p := [ s critical: [  ] ] fork.
 	Processor yield.
-	self assert: (p suspendingList == s).
+	self assert: p suspendingList identicalTo: s.
 	p terminate.
 	self assert: (s instVarNamed: #excessSignals) equals: 0
 ]
@@ -169,11 +176,11 @@ SemaphoreTest >> testWaitTimeDuration [
 	"Ensure that wait: aDuration behaves properly"
 
 	"Ensure that a timed out wait: aDuration returns true from the wait"
-	self assert: (Semaphore new wait: 50 milliSeconds) == true.
+
+	self assert: (Semaphore new wait: 50 milliSeconds) identicalTo: true.
 
 	"Ensure that a signaled wait: aDuration returns false from the wait"
-	self assert: (Semaphore new signal wait: 50 milliSeconds) == false.
-
+	self assert: (Semaphore new signal wait: 50 milliSeconds) identicalTo: false
 ]
 
 { #category : #tests }
@@ -181,17 +188,11 @@ SemaphoreTest >> testWaitTimeDurationWithCompletionAndTimeoutBlocks [
 	"Ensure that wait:onCompletion:onTimeout: behaves properly"
 
 	"Ensure that a timed out wait:onCompletion:onTimeout: returns the value of the timeout block"
-	self assert: (Semaphore new 
-		wait: 50 milliSeconds
-		onCompletion: [ #completed ]
-		onTimeout: [ #timeout ] ) == #timeout.
+
+	self assert: (Semaphore new wait: 50 milliSeconds onCompletion: [ #completed ] onTimeout: [ #timeout ]) identicalTo: #timeout.
 
 	"Ensure that a signaled wait:onCompletion:onTimeout: returns the value of the completed block"
-	self assert: (Semaphore new signal
-		wait: 50 milliSeconds
-		onCompletion: [ #completed ]
-		onTimeout: [ #timeout ]) == #completed.
-
+	self assert: (Semaphore new signal wait: 50 milliSeconds onCompletion: [ #completed ] onTimeout: [ #timeout ]) identicalTo: #completed
 ]
 
 { #category : #tests }
@@ -199,11 +200,11 @@ SemaphoreTest >> testWaitTimeoutMSecs [
 	"Ensure that waitTimeoutMSecs behaves properly"
 
 	"Ensure that a timed out waitTimeoutMSecs: returns true from the wait"
-	self assert: (Semaphore new waitTimeoutMSecs: 50) == true.
+
+	self assert: (Semaphore new waitTimeoutMSecs: 50) identicalTo: true.
 
 	"Ensure that a signaled waitTimeoutMSecs: returns false from the wait"
-	self assert: (Semaphore new signal waitTimeoutMSecs: 50) == false.
-
+	self assert: (Semaphore new signal waitTimeoutMSecs: 50) identicalTo: false
 ]
 
 { #category : #tests }
@@ -211,15 +212,9 @@ SemaphoreTest >> testWaitTimeoutSecondsOnCompletionOnTimeout [
 	"Ensure that waitTimeoutSeconds:onCompletion:onTimeout: behaves properly"
 
 	"Ensure that a timed out waitTimeoutSeconds:onCompletion:onTimeout: returns the value of the timeout block"
-	self assert: (Semaphore new 
-		waitTimeoutSeconds: 0.05
-		onCompletion: [ #completed ]
-		onTimeout: [ #timeout ] ) == #timeout.
+
+	self assert: (Semaphore new waitTimeoutSeconds: 0.05 onCompletion: [ #completed ] onTimeout: [ #timeout ]) identicalTo: #timeout.
 
 	"Ensure that a signaled waitTimeoutSeconds:onCompletion:onTimeout: returns the value of the completed block"
-	self assert: (Semaphore new signal
-		waitTimeoutSeconds: 0.05
-		onCompletion: [ #completed ]
-		onTimeout: [ #timeout ]) == #completed.
-
+	self assert: (Semaphore new signal waitTimeoutSeconds: 0.05 onCompletion: [ #completed ] onTimeout: [ #timeout ]) identicalTo: #completed
 ]

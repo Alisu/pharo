@@ -29,7 +29,7 @@ RGClassDescripitonStrategyTest >> testAllSlots [
 	aSuperclass instanceVariables: #(a b c).
 	aSubclass instanceVariables: #(d e f).
 	
-	self assert: (aSubclass allSlots collect: #name) equals: #(a b c d e f).
+	self assert: (aSubclass allSlots collect: [:each | each name]) equals: #(a b c d e f).
 ]
 
 { #category : #tests }
@@ -58,15 +58,13 @@ RGClassDescripitonStrategyTest >> testClassDescriptionResolvableProperties [
 
 { #category : #tests }
 RGClassDescripitonStrategyTest >> testCopyForBehaviorDefinitionPostCopy [
-
 	| anRGBehavior copy |
-	
 	anRGBehavior := RGBehavior newClass.
 	copy := anRGBehavior copyForBehaviorDefinition.
-	self deny: anRGBehavior behaviorStrategy == copy behaviorStrategy.	
-	self deny: (anRGBehavior behaviorStrategy instVarNamed: #layout) == (copy behaviorStrategy instVarNamed: #layout).
-"TODO: check this failing case:"
-"	self deny: anRGBehavior behaviorStrategy layout == copy behaviorStrategy layout."
+	self deny: anRGBehavior behaviorStrategy identicalTo: copy behaviorStrategy.
+	self deny: (anRGBehavior behaviorStrategy instVarNamed: #layout) identicalTo: (copy behaviorStrategy instVarNamed: #layout)
+	"TODO: check this failing case:"
+	"	self deny: anRGBehavior behaviorStrategy layout == copy behaviorStrategy layout."
 ]
 
 { #category : #tests }

@@ -601,7 +601,7 @@ Metacello >> onWarning: aBlock [
 Metacello >> onWarningLog [
   self
     onWarning: [ :ex | 
-      self crTrace: ex description.
+      MetacelloNotification signal: ex description.
       ex resume ]
 ]
 
@@ -640,11 +640,6 @@ Metacello >> repository: repositoryDescription [
 { #category : #'api options' }
 Metacello >> repositoryOverrides: aRepositoryDescriptionCollection [
     self addStatement: #'repositoryOverrides:' args: {aRepositoryDescriptionCollection}
-]
-
-{ #category : #'api repository shortcuts' }
-Metacello >> saltypickle: projectName [
-    self repository: 'http://squeak.saltypickle.com/' , projectName
 ]
 
 { #category : #accessing }

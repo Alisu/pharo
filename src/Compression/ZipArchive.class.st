@@ -39,7 +39,7 @@ ZipArchive class >> compressionStored [
 	^CompressionStored
 ]
 
-{ #category : #'fileIn/Out' }
+{ #category : #'file in/out' }
 ZipArchive class >> extractAllIn: aFileReferenceOrFileName [
 	"Service method to extract all contents of a zip."
 	| directory |
@@ -81,7 +81,7 @@ ZipArchive class >> findEndOfCentralDirectoryFrom: stream [
 		ifFalse: [0]
 ]
 
-{ #category : #'file format' }
+{ #category : #'testing - file format' }
 ZipArchive class >> isZipArchive: file [
 	"Answer whether the given file represents a valid zip file. The argument file can be a String, FileReference or an open binary read stream.
 	

@@ -37,7 +37,7 @@ Class {
 	#category : #'Refactoring-Core-Refactorings'
 }
 
-{ #category : #'as yet unclassified' }
+{ #category : #cleaning }
 RBRefactoring class >> cleanUp [
 	"RefactoringOptions holds on to blocks, we should make sure to recreate them so the block references the current method"
 	self initializeRefactoringOptions.
@@ -223,7 +223,9 @@ RBRefactoring >> defaultEnvironment [
 { #category : #transforming }
 RBRefactoring >> execute [
 	self primitiveExecute.
-	RBRefactoryChangeManager instance performChange: self changes; addUndoPointer: 1
+	RBRefactoryChangeManager instance 
+		performChange: self changes; 
+		addUndoPointer: (RBRefactoryChangeManager nextCounter)
 ]
 
 { #category : #transforming }
@@ -265,6 +267,16 @@ RBRefactoring >> options [
 { #category : #accessing }
 RBRefactoring >> options: aDictionary [ 
 	options := aDictionary
+]
+
+{ #category : #parsing }
+RBRefactoring >> parseTreeRewriter [
+	^ self parseTreeRewriterClass new
+]
+
+{ #category : #parsing }
+RBRefactoring >> parseTreeRewriterClass [
+	^ RBParseTreeRewriter
 ]
 
 { #category : #utilities }

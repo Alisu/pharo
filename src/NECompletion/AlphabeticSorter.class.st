@@ -4,7 +4,7 @@ Aplhabetical sorting
 Class {
 	#name : #AlphabeticSorter,
 	#superclass : #CompletionSorter,
-	#category : #'NECompletion-New'
+	#category : #'NECompletion-Sorting'
 }
 
 { #category : #description }
@@ -13,8 +13,8 @@ AlphabeticSorter class >> kind [
 	^ 'alphabetical'
 ]
 
-{ #category : #description }
-AlphabeticSorter class >> sortCompletionList: aList [
-
-	^ aList sorted.
+{ #category : #sorting }
+AlphabeticSorter >> sortCompletionList: anOrderedCollection [
+	
+	^ anOrderedCollection sort
 ]

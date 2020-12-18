@@ -15,9 +15,13 @@ BaselineOfPharo >> baseline: spec [
 		spec baseline: 'BaseLibraries' with: [spec repository: repository].
 		
 		spec baseline: 'IDE' with: [spec repository: repository].
-		spec package: 'Deprecated70'.
-		spec package: 'Deprecated80'.
-		spec package: 'Gofer-UI'.
+		spec baseline: 'Calypso' with: [ 
+			spec repository: repository; loads: #('IcebergSupport'). ].
+
+		spec package: 'Deprecated90'.
+		
+		spec package: 'FluidClassBuilder'.
+		spec package: 'FluidClassBuilder-Tests' with: [ spec requires: 'FluidClassBuilder' ].
 	]
 ]
 

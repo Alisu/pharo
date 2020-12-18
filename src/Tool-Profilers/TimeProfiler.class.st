@@ -75,11 +75,30 @@ TimeProfiler class >> fullReportMenuOn: aBuilder [
 TimeProfiler class >> menuCommandOn: aBuilder [ 
 	<worldMenu>
 	(aBuilder item: #'Time Profiler')
-		parent: #Tools;  
-		order: 301;
+		parent: #Profiling;  
+		order: 110;
 		icon: self taskbarIcon;
 		help: 'Profile the execution of a piece of code and navigate into the result.';
 		action: [TimeProfiler new open]
+]
+
+{ #category : #'world menu' }
+TimeProfiler class >> menuProfilingOn: aBuilder [
+	<worldMenu>
+	(aBuilder item: #Profiling)
+		parent: #Tools;
+		label: 'Profiling';
+		help: 'Profiling tools';
+		order: 301.
+
+	(aBuilder item: #'Start profiling all Processes')
+		parent: #Profiling;
+		help: 'Profile all Pharo processes.';
+		action: [ self currentWorld worldState startMessageTally ].
+	(aBuilder item: #'Start profiling UI ')
+		parent: #Profiling;
+		help: 'Profile the UI process of Pharo.';
+		action: [ self currentWorld worldState startThenBrowseMessageTally ].
 ]
 
 { #category : #opening }
@@ -527,26 +546,22 @@ TimeProfiler >> selectedClass [
 
 { #category : #'accessing-computed' }
 TimeProfiler >> selectedMethodCode [
-	^ self selectedNode 
-		ifNil: [ self helpMessage ]
-		ifNotNil: [ :currNode | 
-			| class selector |
-			class := currNode methodClass.
-			selector := currNode selector.
-			(class ultimateSourceCodeAt: selector ifAbsent: [ 'error' ])]
+	| node method |
+	node := self selectedNode.
+	node ifNil: [ ^ self helpMessage ].
+	method := (node methodClass lookupSelector: node selector) ifNil: [ ^'Method not found' ].
+	^method sourceCode
 ]
 
 { #category : #compiling }
 TimeProfiler >> selectedMethodCode: aString notifying: aController [
-
 	"Compile the code in aString. Notify aController of any syntax errors. 
 	Answer false if the compilation fails. Otherwise answer true."
 
-	self selectedNode
-		ifNil: [ ^ false ]
+	^ self selectedNode
+		ifNil: [ false ]
 		ifNotNil: [ :currNode | 
 			| class oldSelector category newSelector |
-
 			class := currNode methodClass.
 			oldSelector := currNode selector.
 			class ifNil: [ ^ false ].	"Normal method accept"
@@ -554,8 +569,7 @@ TimeProfiler >> selectedMethodCode: aString notifying: aController [
 			newSelector := class compile: aString classified: category notifying: aController.
 			newSelector ifNil: [ ^ false ].
 			self changed: #selectedMethodCode.
-			^ true
-			]
+			true ]
 ]
 
 { #category : #accessing }
@@ -690,7 +704,7 @@ TimeProfiler >> toolBarOn: aWindow [
 	toolBar := toolBar := aWindow
 		newToolbar:
 			{((uiTheme
-				newButtonIn: self currentWorld
+				newButtonIn: self
 				for: self
 				getState: nil
 				action: #profileIt
@@ -700,7 +714,7 @@ TimeProfiler >> toolBarOn: aWindow [
 				help: nil)
 				label:
 					(uiTheme
-						newRowIn: self currentWorld
+						newRowIn: self
 						for:
 							{(AlphaImageMorph new
 								image: (self iconNamed: #smallDoItIcon)).
@@ -741,7 +755,7 @@ TimeProfiler >> toolBarOn: aWindow [
 			aWindow newToolSpacer.
 			aWindow newToolSpacer.
 			(uiTheme
-				newCheckboxIn: self currentWorld
+				newCheckboxIn: self
 				for: self
 				getSelected: #reportOtherProcesses
 				setSelected: #reportOtherProcesses:

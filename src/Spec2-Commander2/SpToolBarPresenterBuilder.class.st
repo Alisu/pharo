@@ -4,7 +4,7 @@ I build a ToolBarPresenter from a group of commands.
 To do that, I visit recursively groups of command breadth first and simple add each command encountered to the tool bar.
 "
 Class {
-	#name : #SpToolBarPresenterBuilder,
+	#name : #SpToolbarPresenterBuilder,
 	#superclass : #CmVisitor,
 	#instVars : [
 		'toolbarPresenter'
@@ -12,30 +12,47 @@ Class {
 	#category : #'Spec2-Commander2-Visitors'
 }
 
+{ #category : #private }
+SpToolbarPresenterBuilder >> addPopoverButtonFrom: aCommandsGroup [
+	| button |
+
+	self toolbarPresenter addItem: ((button := self toolbarPresenter newToolbarPopoverButton) 
+		label: aCommandsGroup name;
+		icon: aCommandsGroup icon;
+		content: [ 
+			self class new
+				visit: aCommandsGroup copy beToolbarGroup;
+				toolbarPresenter ];
+		yourself)	
+]
+
 { #category : #initialization }
-SpToolBarPresenterBuilder >> initialize [
+SpToolbarPresenterBuilder >> initialize [
 	super initialize.
-	self toolbarPresenter: SpToolBarPresenter new.
+	self toolbarPresenter: SpToolbarPresenter new.
 ]
 
 { #category : #accessing }
-SpToolBarPresenterBuilder >> toolbarPresenter [
+SpToolbarPresenterBuilder >> toolbarPresenter [
 	^ toolbarPresenter
 ]
 
 { #category : #accessing }
-SpToolBarPresenterBuilder >> toolbarPresenter: anObject [
+SpToolbarPresenterBuilder >> toolbarPresenter: anObject [
 	toolbarPresenter := anObject
 ]
 
 { #category : #visiting }
-SpToolBarPresenterBuilder >> visitCommand: aCmCommandEntry [
+SpToolbarPresenterBuilder >> visitCommand: aCmCommandEntry [
 	aCmCommandEntry positionStrategy
-		addButton: (SpToolBarButton new
-						label: aCmCommandEntry name;
-						help: aCmCommandEntry description;
-						icon: aCmCommandEntry icon;
-						action: [ aCmCommandEntry execute ];
-						yourself)
+		addButton: aCmCommandEntry buildPresenter
 		toToolbar: self toolbarPresenter
+]
+
+{ #category : #visiting }
+SpToolbarPresenterBuilder >> visitCommandGroup: aCmCommandsGroup [
+	
+	aCmCommandsGroup isToolbarPopoverButton 
+		ifTrue: [ self addPopoverButtonFrom: aCmCommandsGroup ]
+		ifFalse: [ super visitCommandGroup: aCmCommandsGroup ]
 ]

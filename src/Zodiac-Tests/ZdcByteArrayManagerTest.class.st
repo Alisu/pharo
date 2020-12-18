@@ -7,7 +7,7 @@ Class {
 	#category : #'Zodiac-Tests'
 }
 
-{ #category : #testing }
+{ #category : #tests }
 ZdcByteArrayManagerTest >> testClearing [
 	| byteArrayManager one two |
 	byteArrayManager := ZdcByteArrayManager new.
@@ -16,11 +16,11 @@ ZdcByteArrayManagerTest >> testClearing [
 	one := (1 to: 10) asByteArray.
 	byteArrayManager recycle: one.
 	two := byteArrayManager byteArrayOfSize: 10 zero: true.
-	self assert: one == two.
+	self assert: one identicalTo: two.
 	self assert: two equals: (ByteArray new: 10)
 ]
 
-{ #category : #testing }
+{ #category : #tests }
 ZdcByteArrayManagerTest >> testSimple [
 	| byteArrayManager byteArray |
 	byteArrayManager := ZdcByteArrayManager new.
@@ -29,5 +29,5 @@ ZdcByteArrayManagerTest >> testSimple [
 	byteArray := byteArrayManager byteArrayOfSize: 4096 zero: false.
 	byteArrayManager recycle: byteArray.
 	self assert: byteArrayManager totalSize equals: 4096.
-	self assert: (byteArrayManager byteArrayOfSize: 4096 zero: false) == byteArray
+	self assert: (byteArrayManager byteArrayOfSize: 4096 zero: false) identicalTo: byteArray
 ]

@@ -258,12 +258,10 @@ MenuItemMorph >> drawIconOn: aCanvas [
 { #category : #drawing }
 MenuItemMorph >> drawOn: aCanvas [
 	| stringColor |
-	self shouldBeHighlighted
-		ifTrue: [ aCanvas
-				fillRectangle: self bounds
-				fillStyle: self selectionFillStyle.
-			stringColor := self selectionTextColor ]
-		ifFalse: [ stringColor := color ].
+	stringColor := self shouldBeHighlighted
+		ifTrue: [ aCanvas fillRectangle: self bounds fillStyle: self selectionFillStyle.
+			self selectionTextColor ]
+		ifFalse: [ color ].
 	self drawIconOn: aCanvas.
 	aCanvas
 		drawString: self contents
@@ -533,7 +531,8 @@ MenuItemMorph >> minWidth [
 MenuItemMorph >> mouseDown: evt [
 	"Handle a mouse down event. Menu items get activated when the mouse is over them."
 
-	evt shiftPressed ifTrue: [^ super mouseDown: evt].  "enable label editing"
+	(evt shiftPressed and: [ self isEditable ])
+		ifTrue: [^ super mouseDown: evt].  "enable label editing"
 	evt hand newMouseFocus: owner. "Redirect to menu for valid transitions"
 	owner selectItem: self event: evt. 
 

@@ -65,7 +65,7 @@ SpAbstractAdapter >> adapt: aPresenter [
 	model := aPresenter.
 	aPresenter addDependent: self.
 
-	widget := self buildWidget.
+	widget := self buildWidget
 ]
 
 { #category : #protocol }
@@ -74,10 +74,25 @@ SpAbstractAdapter >> add: aWidget [
 	self subclassResponsibility
 ]
 
+{ #category : #initialization }
+SpAbstractAdapter >> addEventsTo: aWidget [
+	
+	self presenter hasEventHandler ifFalse: [ ^ self ].
+	self presenter eventHandler 
+		installAllEventsTo: self 
+		target: (self eventHandlerReceiver: aWidget)
+]
+
 { #category : #factory }
 SpAbstractAdapter >> buildWidget [
 
 	^ self subclassResponsibility
+]
+
+{ #category : #private }
+SpAbstractAdapter >> eventHandlerReceiver: aWidget [
+
+	^ aWidget
 ]
 
 { #category : #protocol }
@@ -151,6 +166,12 @@ SpAbstractAdapter >> removeSubWidgets [
 	self subclassResponsibility
 ]
 
+{ #category : #'as yet unclassified' }
+SpAbstractAdapter >> replaceLayoutWith: aLayout [
+	
+	
+]
+
 { #category : #emulating }
 SpAbstractAdapter >> rightClicked [
 
@@ -167,12 +188,6 @@ SpAbstractAdapter >> selector [
 SpAbstractAdapter >> selector: anObject [
 	
 	selector := anObject
-]
-
-{ #category : #protocol }
-SpAbstractAdapter >> takeKeyboardFocus [
-	
-	self widget ifNotNil: [:w | w takeKeyboardFocus ]
 ]
 
 { #category : #updating }

@@ -1,10 +1,11 @@
 "
 Subinstances of me are members in a ZipArchive.
+
 They represent different data sources:
-	* ZipDirectoryMember -- a directory to be added to a zip file
-	* ZipFileMember -- a file or directory that is already in a zip file
-	* ZipNewFilemember -- a file that is to be added to a zip file
-	* ZipStringMember -- a string that is to be added to a zip file
+* ZipDirectoryMember -- a directory to be added to a zip file
+* ZipFileMember -- a file or directory that is already in a zip file
+* ZipNewFilemember -- a file that is to be added to a zip file
+* ZipStringMember -- a string that is to be added to a zip file
 
 They can write their data to another stream either copying, compressing,
 or decompressing as desired.
@@ -141,7 +142,7 @@ ZipArchiveMember >> centralDirectoryHeaderSize [
 
 	| systemFileName systemFileComment systemCdExtraField |
 	systemFileName := fileName asVmPathName.
-	systemFileComment := fileComment convertToSystemString.
+	systemFileComment := fileComment utf8Encoded.
 	systemCdExtraField := cdExtraField.
 	^ 46 + systemFileName size + systemCdExtraField size + systemFileComment size
 
@@ -700,7 +701,7 @@ ZipArchiveMember >> writeCentralDirectoryFileHeaderTo: aStream [
 
 	| systemFileName systemFileComment systemCdExtraField endianStream |
 	systemFileName := fileName asVmPathName.
-	systemFileComment := fileComment convertToSystemString.
+	systemFileComment := fileComment utf8Encoded.
 	systemCdExtraField := cdExtraField.
 	aStream nextPutAll: CentralDirectoryFileHeaderSignature.
 	
@@ -732,7 +733,7 @@ ZipArchiveMember >> writeCentralDirectoryFileHeaderTo: aStream [
 
 	aStream nextPutAll: systemFileName asByteArray.
 	aStream nextPutAll: systemCdExtraField asByteArray.
-	aStream nextPutAll: systemFileComment asByteArray
+	aStream nextPutAll: systemFileComment
 ]
 
 { #category : #'private-writing' }

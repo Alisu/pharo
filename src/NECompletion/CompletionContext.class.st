@@ -7,79 +7,144 @@ Class {
 	#instVars : [
 		'source',
 		'position',
-		'theClass',
 		'completionToken',
-		'model',
 		'ast',
 		'node',
-		'isWorkspace'
+		'class',
+		'entries',
+		'sorter',
+		'engine'
 	],
-	#category : #'NECompletion-New'
+	#classVars : [
+		'SorterClass'
+	],
+	#category : #'NECompletion-Model'
 }
 
 { #category : #'instance creation' }
-CompletionContext class >> controller: aNECController class: aClass source: aString position: anInteger [ 
+CompletionContext class >> engine: aCompletionEngine class: aClass source: aString position: anInteger [ 
 	^ self new
-		setController: aNECController
+		engine: aCompletionEngine
 		class: aClass
 		source: aString
 		position: anInteger
 ]
 
 { #category : #accessing }
-CompletionContext >> completionToken [
-
-	"here we need to return the name of the var or selector"
-
-	node ifNil: [ ^ '' ].
-	^ completionToken ifNil: [ node completionToken ]
+CompletionContext class >> sorterClass [
+	^ SorterClass
 ]
 
 { #category : #accessing }
-CompletionContext >> createModel [
+CompletionContext class >> sorterClass: aSorter [
+	SorterClass := aSorter
+]
+
+{ #category : #entries }
+CompletionContext >> activateEntryAt: anIndex [
+
+	(self entries at: anIndex) activateOn: self
+]
+
+{ #category : #accessing }
+CompletionContext >> completionToken [
+	^ completionToken ifNil: [ ^ ''  ]
+]
+
+{ #category : #accessing }
+CompletionContext >> engine [
+	^ engine
+]
+
+{ #category : #'initialize-release' }
+CompletionContext >> engine: aCompletionEngine class: aClass source: aString position: anInteger [ 
+	class := aClass. 
+	source := aString.
+	position := anInteger.
+	engine := aCompletionEngine.
+	sorter := self class sorterClass new context: self.	
 	self parseSource.
 	node := ast nodeForOffset: position.
-  ^ (CompletionModel new node: node) clazz: theClass
+	completionToken := node completionToken: position
 ]
 
 { #category : #accessing }
-CompletionContext >> model [
-    ^model ifNil: [ model := self createModel ]
+CompletionContext >> entries [
+	^entries ifNil: [entries := self initEntries ]
+]
+
+{ #category : #entries }
+CompletionContext >> entryCount [
+	^ self entries size
+]
+
+{ #category : #testing }
+CompletionContext >> hasEntries [
+	^ self entries isEmptyOrNil not
+]
+
+{ #category : #testing }
+CompletionContext >> hasMessage [
+	^ self message notNil
+]
+
+{ #category : #entries }
+CompletionContext >> initEntries [
+	^ sorter sortCompletionList: (node completionEntries: position) asOrderedCollection
+]
+
+{ #category : #parsing }
+CompletionContext >> isWorkspace [
+	^ engine notNil and: [ engine isScripting ]
+]
+
+{ #category : #accessing }
+CompletionContext >> message [
+	^self hasEntries 
+		ifFalse: ['no completions found'] 
+		ifTrue: [nil]
 ]
 
 { #category : #action }
 CompletionContext >> narrowWith: aString [
-	"method borrowed from NECContext to make the completion plugging work"
-	completionToken := aString.
-	model := self createModel.
-	model narrowWith: aString.
+	"we need to re-init if the string is shorter as the user types backspace"
+	(aString size < self completionToken size) ifTrue: [	entries := self initEntries ].
+	"we narrow the entries down"
+	entries := self entries select: [ :each | each contents beginsWith: completionToken ].
+	"and update the completionToken"
+	completionToken := aString
+]
+
+{ #category : #accessing }
+CompletionContext >> node [
+	^ node
 ]
 
 { #category : #parsing }
 CompletionContext >> parseSource [
-
-	ast := isWorkspace
-		ifTrue: [RBParser parseFaultyExpression: source]
-		ifFalse: [RBParser parseFaultyMethod: source].
-	ast doSemanticAnalysisIn: theClass.
+	ast := class compiler
+		source: source;
+		noPattern: self isWorkspace;
+		options: #(+ optionParseErrors + optionSkipSemanticWarnings);
+		parse.
 	TypingVisitor new visitNode: ast
 ]
 
-{ #category : #accessing }
-CompletionContext >> receiverClass [
-	node isMessage ifFalse: [ ^nil ].
-	^node receiver propertyAt: #type ifAbsent: [ nil ] .
-
+{ #category : #replacement }
+CompletionContext >> replaceTokenInEditorWith: aString [
+	
+	engine replaceTokenInEditorWith: aString
 ]
 
-{ #category : #'initialize-release' }
-CompletionContext >> setController: aECController class: aClass source: aString position: anInteger [ 
-	
-	isWorkspace:= aECController 
-		ifNotNil: [ aECController isScripting ]
-		ifNil: [ false ].
+{ #category : #accessing }
+CompletionContext >> sorter: anObject [
+	"this allows tests to change the sorter"
+	sorter := anObject
+]
 
-	theClass := aClass. 
-	source := aString.
-	position := anInteger
+{ #category : #accessing }
+CompletionContext >> title [
+	"we only give a title if we know the type of the receiver of a message send"
+	node isMessage ifFalse: [ ^'' ].
+	^node receiver propertyAt: #type ifPresent: #name ifAbsent: ''
 ]

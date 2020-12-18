@@ -4,7 +4,7 @@ Extension { #name : #ToggleMenuItemShortcutWithSymbol }
 ToggleMenuItemShortcutWithSymbol >> drawOnAthensCanvas: aCanvas [
 	| keyParts text paragraph keyBounds keyFont |
 
-	keyParts := (self keyText substrings: '+') collect: #trimBoth.
+	keyParts := (self keyText substrings: '+') collect: [:each | each trimBoth].
 	
 	"Ensure shift is first"
 	((keyParts includes: 'Shift') and: [ (keyParts first = 'Shift') not ])
@@ -26,5 +26,8 @@ ToggleMenuItemShortcutWithSymbol >> drawOnAthensCanvas: aCanvas [
 			from: 1
 			in: (0@0 corner: keyBounds corner);
 		yourself.
-	aCanvas asCanvasWrapper paragraph: paragraph bounds: keyBounds color: self owner color
+	aCanvas asCanvasWrapper 
+		paragraph: paragraph 
+		bounds: keyBounds 
+		color: self color
 ]

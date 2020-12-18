@@ -1,8 +1,14 @@
+"
+I'm a tab morph used to build spec notebooks.
+I extend my parent by adding special ways to add pages (allowing any widget to be a page).
+I also add a toolbar to add actions.
+"
 Class {
 	#name : #SpNotebookMorph,
 	#superclass : #TabGroupMorph,
 	#instVars : [
-		'headerMorph'
+		'headerMorph',
+		'toolbarMorph'
 	],
 	#category : #'Spec2-Adapters-Morphic-Notebook'
 }
@@ -14,32 +20,7 @@ SpNotebookMorph class >> tabCellInset [
 ]
 
 { #category : #adding }
-SpNotebookMorph >> addLazyPage: aBlock label: aStringOrMorph [
-
-	self 
-		addLazyPage: aBlock 
-		label: aStringOrMorph 
-		collapsable: false
-]
-
-{ #category : #adding }
-SpNotebookMorph >> addLazyPage: aBlock label: aStringOrMorph action: anActionMorphOrNil [
-	| newPage label |
-	
-	newPage := SpNotebookPageMorph new.
-	newPage lazyPageMorphCreation: aBlock.
-		
-	label := self 
-		buildLabelFrom: aStringOrMorph 
-		withAction: anActionMorphOrNil.
-	
-	newPage labelMorph: label.
-	
-	self addPage: newPage label: label
-]
-
-{ #category : #adding }
-SpNotebookMorph >> addLazyPage: aBlock label: aStringOrMorph collapsable: aBoolean [
+SpNotebookMorph >> addLazyPage: aBlock label: aStringOrMorph model: aSpNotebookPage [ 
 	| newPage label |
 	
 	newPage := SpNotebookPageMorph new.
@@ -47,13 +28,20 @@ SpNotebookMorph >> addLazyPage: aBlock label: aStringOrMorph collapsable: aBoole
 
 	label := self 
 		buildLabelFrom: aStringOrMorph 
-		withAction: (aBoolean 
-			ifTrue: [ self newCloseButtonFor: newPage ]
+		withAction: (aSpNotebookPage isCloseable
+			ifTrue: [ self newCloseButtonFor: aSpNotebookPage ]
 			ifFalse: [ nil ]).
 	
 	newPage labelMorph: label.
 	
 	self addPage: newPage label: label
+]
+
+{ #category : #adding }
+SpNotebookMorph >> addPage: aMorph label: aStringOrMorph [
+	
+	super addPage: aMorph label: aStringOrMorph.
+	aMorph privateOwner: self
 ]
 
 { #category : #private }
@@ -70,15 +58,10 @@ SpNotebookMorph >> buildLabelFrom: aStringOrMorph withAction: aMorph [
 		ifTrue: [ aStringOrMorph ]
 		ifFalse: [ self buildLabelFrom: aStringOrMorph ].
 	
-	^ aMorph
-		ifNotNil: [ 
-			aMorph vResizing: #spaceFill. 
-			PanelMorph new 
-				addMorphBack: innerLabel;			
-				addMorphBack: aMorph; 
-				yourself ]
-		ifNil: [ 
-			innerLabel ]
+	aMorph ifNotNil: [
+		innerLabel addMorphBack: aMorph ].
+
+	^ innerLabel
 ]
 
 { #category : #testing }
@@ -113,12 +96,13 @@ SpNotebookMorph >> initialize [
 ]
 
 { #category : #factory }
-SpNotebookMorph >> newCloseButtonFor: aPage [
+SpNotebookMorph >> newCloseButtonFor: aSpNotebookPage [
 
-	^ SpButtonPresenter new 
-		icon: (self theme windowCloseForm);
-		action: [ self removePage: aPage ];
-		buildWithSpec
+	^ self theme
+		newCloseControlIn: self
+		for: aSpNotebookPage
+		action: [ aSpNotebookPage removeFromNotebook ]
+		help: 'Close this page' translated
 ]
 
 { #category : #factory }
@@ -156,21 +140,9 @@ SpNotebookMorph >> newTabSelectorMorph [
 ]
 
 { #category : #private }
-SpNotebookMorph >> newToolbarMorph [
-	^ GLMPanelMorph new
-		fillStyle: (SolidFillStyle color: Color transparent);
-		borderStyle: (BorderStyle width: 0);
-		vResizing: #spaceFill;
-		hResizing: #shrinkWrap;
-		cellPositioning: #center;
-		changeTableLayout;
-		cellInset: 0;
-		yourself 
-]
-
-{ #category : #private }
 SpNotebookMorph >> pageAt: index [
-	^ (self pages at: index ) actualPageMorph
+
+	^ (self pages at: index) actualPageMorph
 ]
 
 { #category : #accessing }
@@ -178,6 +150,11 @@ SpNotebookMorph >> pageWithModel: anObject [
 	"an utility to easy find pages with a model"
 
 	^ self pages detect: [ :each | each model = anObject ]
+]
+
+{ #category : #private }
+SpNotebookMorph >> postAddPage: aMorph [ 
+	"a hook to format the page after creation"
 ]
 
 { #category : #private }
@@ -189,7 +166,7 @@ SpNotebookMorph >> removePage: aPage [
 
 	self announcer
 		announce:
-			(LazyTabPageRemoved new
+			(SpNotebookPageRemoved new
 				tabs: self;
 				page: aPage;
 				pageIndex: removedPageIndex;
@@ -212,37 +189,66 @@ SpNotebookMorph >> suspendAnnouncementsDuring: aBlock [
 ]
 
 { #category : #private }
+SpNotebookMorph >> updateContentMorph: aMorph with: newMorph [
+	| pageBounds |
+
+	pageBounds := self pageMorph bounds.
+	self contentMorph replaceSubmorph: aMorph by: newMorph.
+	self flag: 'Without setting here the bounds the page moves a few pixels when 
+	refreshing the inspector'.
+	self pageMorph bounds: pageBounds.
+	self pageMorph layoutChanged
+]
+
+{ #category : #private }
 SpNotebookMorph >> updatePageIndex: index [
-
 	"Change to the given page index, update the toolbar and send the announcement"
+	| oldPage newPage |
 
-	| oldPage |
+	index = 0 ifTrue: [ ^ self ].
 
-	index = 0
-		ifTrue: [ ^ self ].
-
-	oldPage := self tabSelectorMorph selectedTab.
+	oldPage := self pages at: self selectedPageIndex.
 	self pageMorph
-		ifNil: [ self contentMorph addMorph: ( self pageAt: index ) ]
-		ifNotNil: [ :page |
-			| pageBounds |
-			pageBounds := self pageMorph bounds.
-			self contentMorph replaceSubmorph: page by: ( self pageAt: index ).
-			self
-				flag: 'Without setting here the bounds the pange moves a few pizels when refreshing the inspector'.
-			self pageMorph bounds: pageBounds.
-			self pageMorph layoutChanged
-			].
+		ifNotNil: [ :aPage | self updateContentMorph: aPage with: (self pageAt: index) ]
+		ifNil: [ self contentMorph addMorph: (self pageAt: index) ].
+
+	newPage := self pages at: index.
+	self postAddPage: newPage.
 
 	self headerMorph layoutChanged.
 	self pageMorph layoutChanged.
-	self adoptPaneColor: ( self owner ifNil: [ self ] ) paneColor.
-	( self tabSelectorMorph tabs at: index ) font: self tabSelectorMorph font.
+	self adoptPaneColor: (self owner ifNil: [ self ]) paneColor.
+	self tabSelectorMorph font ifNotNil: [ :aFont |
+		(self tabSelectorMorph tabs at: index) font: aFont ].
 
-	self announcer
-		announce:
-			( SpNotebookPageChanged new
-				page: ( self pages at: index );
-				oldPage: oldPage;
-				pageIndex: index )
+	self announcer announce: (SpNotebookPageChanged new
+		page: newPage;
+		oldPage: oldPage;
+		pageIndex: index)
+]
+
+{ #category : #private }
+SpNotebookMorph >> updatePageIndex: index oldIndex: oldSelectedIndex [
+	"Change to the given page index, update the toolbar and send the announcement"
+	| oldPage newPage |
+
+	index = 0 ifTrue: [ ^ self ].
+
+	oldPage := self pages at: oldSelectedIndex.
+	self pageMorph
+		ifNotNil: [ :aPage | self updateContentMorph: aPage with: (self pageAt: index) ]
+		ifNil: [ self contentMorph addMorph: (self pageAt: index) ].
+
+	newPage := self pages at: index.
+	self postAddPage: newPage.
+	self headerMorph layoutChanged.
+	self pageMorph layoutChanged.
+	self adoptPaneColor: (self owner ifNil: [ self ]) paneColor.
+	self tabSelectorMorph font ifNotNil: [ :aFont | 
+		(self tabSelectorMorph tabs at: index) font: aFont ].
+	
+	self announcer announce: (SpNotebookPageChanged new
+		page: newPage;
+		oldPage: oldPage;
+		pageIndex: index)
 ]

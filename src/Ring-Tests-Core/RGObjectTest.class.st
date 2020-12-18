@@ -21,67 +21,62 @@ RGObjectTest >> testFullCopy [
 
 { #category : #tests }
 RGObjectTest >> testNameAccess [
-	
-	| def | 
-	
+	| def |
 	"we cannot test RGObject directly here"
 	def := RGClass named: #SomeDefinition.
-	self assert: (def asRGDefinition == def).
+	self assert: def asRGDefinition identicalTo: def.
 	self assert: def name equals: #SomeDefinition.
 	self assert: def fullName equals: #SomeDefinition.
 	def name: #NewName.
 	self assert: def name equals: #NewName.
-	self assert: def fullName equals: #NewName.
-	
-	
-	
+	self assert: def fullName equals: #NewName
 ]
 
 { #category : #tests }
 RGObjectTest >> testParent [
-
 	"test link to parent object"
 
-	| def1 def2 | 
-	
+	| def1 def2 |
 	def1 := RGObject new.
 	def2 := RGObject new.
 	def2 pvtParent: def1.
-	self assert: (def2 parent == def1).
-	
-
+	self assert: def2 parent identicalTo: def1
 ]
 
 { #category : #tests }
 RGObjectTest >> testProperties [
 
 	"test all method that access properties of Ring objects"
-	
-	| def | 
-	
+
+	| def |
 	def := RGObject new.
-	
+
 	self assert: def hasProperties not.
-	self assert: (def hasPropertyNamed: #note) not.
+	self assert: (def hasProperty: #note) not.
 	self assert: def propertyNames isEmpty.
-	self assert: (def propertyNamed: #note ifAbsent: [#someNote]) equals: #someNote.
-	self assert: (def hasPropertyNamed: #note) not.
-	self assert: (def propertyNamed: #note ifAbsentPut: [#someNote]) equals: #someNote.
-	self assert: (def hasPropertyNamed: #note).
+	self
+		assert: (def propertyNamed: #note ifAbsent: [ #someNote ])
+		equals: #someNote.
+	self assert: (def hasProperty: #note) not.
+	self
+		assert: (def propertyNamed: #note ifAbsentPut: [ #someNote ])
+		equals: #someNote.
+	self assert: (def hasProperty: #note).
 	self assert: (def propertyNamed: #note) equals: #someNote.
 	self assert: def hasProperties.
-	self assert: def propertyNames asArray equals: {#note}.
+	self assert: def propertyNames asArray equals: { #note }.
 	def propertyNamed: #note2 put: #someNote2.
-	self assert: (def propertyNames asArray includesAll: {#note. #note2}).
+	self assert:
+		(def propertyNames asArray includesAll: { #note. #note2 }).
 	def removePropertyNamed: #note.
-	self shouldnt: [def removePropertyNamed: #nonexisting] raise: KeyNotFound.
-	self assert: def propertyNames asArray equals: {#note2}.
+	self
+		shouldnt: [ def removePropertyNamed: #nonexisting ]
+		raise: KeyNotFound.
+	self assert: def propertyNames asArray equals: { #note2 }.
 	def removePropertyNamed: #note2.
 	self assert: def hasProperties not.
-	self assert: (def hasPropertyNamed: #note) not.
-	self assert: def propertyNames isEmpty.
-	
-
+	self assert: (def hasProperty: #note) not.
+	self assert: def propertyNames isEmpty
 ]
 
 { #category : #tests }
@@ -152,7 +147,7 @@ RGObjectTest >> testTypes [
 	self deny: def isTraitComposition.
 	self deny: def isTraitExclusion.
 	self deny: def isTraitTransformation.
-	self deny: def isVariableDefinition.
+	self deny: def isVariable.
 
 ]
 

@@ -2,27 +2,22 @@
 My singleton is a central entry point to the system.
 
 It has many roles and responsibilities (to be documented)
-	- startup/shutdown image
-	- source management
-	- namespace access
-	- tool access
-	- platform access
-	- VM information and parameters	
-	
-Startup
------------
+- startup/shutdown image
+- source management
+- namespace access
+- tool access
+- platform access
+- VM information and parameters	
+
+###Startup
+
 At startup and shutdown the image execute the methods startUp: and shutdown: of registered classes (registered using addToStartUpList:, addToShutDownList:, ... methods and friends).
 	
 Startup phases
-During the first stage of start up the UI manager, the default uimanager is switched to a specific non interactive ui manager (StartupUIManager). Note that this specific non interactive UIManager kills the system on any attempt to open windows and interaction. So be warned, don't use interaction in the first phase. 
+During the first stage of start up the UI manager, the default uimanager is switched to a specific non interactive ui manager (`StartupUIManager`). Note that this specific non interactive UIManager kills the system on any attempt to open windows and interaction. So be warned, don't use interaction in the first phase. 
 Then all registered classes execute their start up procedures (which should not imply interactive behavior). 
 After startup list is finished, any deferred startup actions are executed, which you can add using the method
-addDeferredStartupAction: method.  
-
-
-
-
-
+`addDeferredStartupAction:` method.  
 
 "
 Class {
@@ -60,7 +55,10 @@ SmalltalkImage class >> cleanUp [
 
 { #category : #settings }
 SmalltalkImage class >> compilerClass [
-	^CompilerClass
+
+	^CompilerClass ifNil: [ 
+		"use OpalCompiler as the fallback compiler if installed"
+		self class environment at: #OpalCompiler ifAbsent: [ nil ] ]
 ]
 
 { #category : #settings }
@@ -217,6 +215,13 @@ SmalltalkImage >> at: key ifPresent: aBlock [
 ]
 
 { #category : #'to clean later' }
+SmalltalkImage >> at: key ifPresent: aBlock ifAbsent: anotherBlock [
+	"Lookup the given key in the globals. If it is present, answer the value of evaluating the given block with the value associated with the key. Otherwise answer the value of the second block."
+
+	^ globals at: key ifPresent: aBlock ifAbsent: anotherBlock
+]
+
+{ #category : #'to clean later' }
 SmalltalkImage >> at: aKey put: anObject [ 
 	"Set the global at key to be anObject.  If key is not found, create a
 	new entry for key and set is value to anObject. Answer anObject."
@@ -303,14 +308,6 @@ SmalltalkImage >> changeImagePathTo: aString [
 ]
 
 { #category : #'image, changes name' }
-SmalltalkImage >> changesFile [
-	"Answer the file containing the current changes."
-
-	^ FileLocator changes
-
-]
-
-{ #category : #'image, changes name' }
 SmalltalkImage >> changesName [
 	"Answer the name for the changes file corresponding to the image file name."
 	"Smalltalk changesName"
@@ -324,8 +321,8 @@ SmalltalkImage >> changesSuffix [
 ]
 
 { #category : #'class and trait names' }
-SmalltalkImage >> classNamed: className [ 
-	^globals classOrTraitNamed: className.
+SmalltalkImage >> classNamed: className [
+	^ globals classOrTraitNamed: className
 ]
 
 { #category : #'class and trait names' }
@@ -454,9 +451,15 @@ SmalltalkImage >> compiler [
 		environment: self globals
 ]
 
-{ #category : #compiler }
+{ #category : #accessing }
 SmalltalkImage >> compilerClass [
-	^CompilerClass ifNil: [CompilerClass := OpalCompiler].
+	^ self class compilerClass
+]
+
+{ #category : #accessing }
+SmalltalkImage >> compilerClass: aClass [
+
+	self class compilerClass: aClass
 ]
 
 { #category : #'memory space' }
@@ -652,6 +655,7 @@ SmalltalkImage >> fixObsoleteReferences [
 
 { #category : #housekeeping }
 SmalltalkImage >> fixObsoleteSharedPools [
+	self cleanOutUndeclared.
 	self allClasses
 		select: [ :class |
 			class sharedPools isEmptyOrNil not and: [ 
@@ -674,13 +678,6 @@ SmalltalkImage >> flushClassNameCache [
 	"Force recomputation of the cached list of class names."
 
 	globals flushClassNameCache.
-]
-
-{ #category : #'memory space' }
-SmalltalkImage >> forceTenure [
-	"Primitive. Tell the GC logic to force a tenure on the next increment GC."
-	<primitive: 'primitiveForceTenure'>
-	^self primitiveFailed
 ]
 
 { #category : #'image, changes name' }
@@ -715,14 +712,14 @@ SmalltalkImage >> getFileNameFromUser [
 
 	| givenName strippedName imageFile changesFile |
 	givenName := UIManager default
-		request: 'New File Name?' translated
+		request: 'New File Name?'
 		initialAnswer: (self imageFile basename copyUpToLast:  Path extensionDelimiter).
 	strippedName := self stripImageExtensionFrom: givenName.
 	strippedName isEmptyOrNil ifTrue: [^nil].
 	imageFile := self fileForImageNamed: strippedName.
 	changesFile := self fileForChangesNamed: strippedName.
 	((imageFile exists or: [changesFile exists]) and:
-		[(self confirm: ('{1} already exists. Overwrite?' translated format: {strippedName})) not])
+		[(self confirm: ('{1} already exists. Overwrite?' format: {strippedName})) not])
 			ifTrue: [^nil].
 	^strippedName
 ]
@@ -749,11 +746,6 @@ SmalltalkImage >> growMemoryByAtLeast: numBytes [
 	(numBytes isInteger and: [numBytes > 0]) ifTrue:
 		[OutOfMemory signal].
 	^self primitiveFailed
-]
-
-{ #category : #'to clean later' }
-SmalltalkImage >> hasBindingThatBeginsWith: aString [
-	^globals hasBindingThatBeginsWith: aString
 ]
 
 { #category : #'class and trait names' }
@@ -783,12 +775,6 @@ SmalltalkImage >> imageDirectory [
 	^ self imagePath asFileReference parent
 ]
 
-{ #category : #'image, changes name' }
-SmalltalkImage >> imageFile [
-
-	^ FileLocator image
-]
-
 { #category : #image }
 SmalltalkImage >> imageFormatVersion [
 	"Answer an integer identifying the type of image. The image version number may
@@ -799,7 +785,7 @@ SmalltalkImage >> imageFormatVersion [
 	"Smalltalk image imageFormatVersion"
 
 	<primitive: 'primitiveImageFormatVersion'>
-	self notify: 'This virtual machine does not support the optional primitive #primitiveImageFormatVersion' translated.
+	self notify: 'This virtual machine does not support the optional primitive #primitiveImageFormatVersion'.
 	^''
 ]
 
@@ -884,24 +870,26 @@ SmalltalkImage >> isInteractive [
 	^ false
 ]
 
-{ #category : #'memory space' }
-SmalltalkImage >> isRoot: oop [
-	"Primitive. Answer whether the object is currently a root for youngSpace."
-	<primitive: 'primitiveIsRoot'>
-	^self primitiveFailed
+{ #category : #testing }
+SmalltalkImage >> isInteractiveGraphic [
+	"Check if vm were run headless and with interactive (graphics) parameter.
+	 Using the headless VM, the need of a GUI environment is indicated by sending --interactive 
+	 parameter to the image."
+	
+	"non-headless mode is always interactive"
+	self isHeadless ifFalse: [ ^ true ].
+
+	-1000 to: 1000 do: [ :n | 
+		(#('--interactive') includes: (self vm getSystemAttribute: n)) 
+			ifTrue: [ ^ true ]].
+
+	^ false
 ]
 
 { #category : #printing }
 SmalltalkImage >> isSelfEvaluating [
 	self == Smalltalk ifTrue: [^true].
 	^super isSelfEvaluating
-]
-
-{ #category : #'memory space' }
-SmalltalkImage >> isYoung: oop [
-	"Primitive. Answer whether the object currently resides in youngSpace."
-	<primitive: 'primitiveIsYoung'>
-	^self primitiveFailed
 ]
 
 { #category : #accessing }
@@ -1078,6 +1066,19 @@ SmalltalkImage >> logStdErrorDuring: aBlock [
 	] on: Error do: [ :e| "we don't care if the logging to stdout fails..." ].
 ]
 
+{ #category : #miscellaneous }
+SmalltalkImage >> logStdOutDuring: aBlock [
+	| stderr |
+	"install the line end conversion and force initialize the converter"
+	stderr := ZnNewLineWriterStream
+		on: (ZnCharacterWriteStream on: Stdio stdout encoding: 'utf8').
+	
+	[aBlock value: stderr.] 
+		on: Error do: [ "If the block fails we don't do nothing. This can lead to recursive errors" ].
+
+	stderr flush.
+]
+
 { #category : #'memory space' }
 SmalltalkImage >> lowSpaceThreshold [ 
 	"Return the low space threshold. When the amount of free memory (after garbage collection) falls below this limit, the system is in serious danger of completely exhausting memory and crashing. This limit should be made high enough to allow the user open a debugger to diagnose a problem or to save the image."
@@ -1147,7 +1148,7 @@ SmalltalkImage >> memoryHogs [
 SmalltalkImage >> metacelloPlatformAttributes [
     "Returns the tags for the conditional platform loading in Metacello. Pay attention the order is important: from most  to least general." 
     "For release integrators, we should not have #'pharo1.3x' **and** #'pharo1.4.x'"
-   ^ #(#squeakCommon #pharo #'pharo8.x' #'pharo8.0.x')
+   ^ #(#squeakCommon #pharo #'pharo9.x' #'pharo9.0.x')
 ]
 
 { #category : #'special objects' }
@@ -1159,7 +1160,7 @@ SmalltalkImage >> newSpecialObjectsArray [
 	If you are writing a plugin and need additional special object(s) for your own use, 
 	use addGCRoot() function and use own, separate special objects registry "
 	
-	"The Special Objects Array is an array of objects used by the Squeak virtual machine.
+	"The Special Objects Array is an array of objects used by the virtual machine.
 	 Its contents are critical and accesses to it by the VM are unchecked, so don't even
 	 think of playing here unless you know what you are doing."
 	| newArray |
@@ -1416,15 +1417,13 @@ SmalltalkImage >> privSaveImageWithCleanup [
  
 	[
 		self snapshot: true andQuit: true.
-	] ifError: [:e |
-		| rep |
-		rep := FileStream forceNewFileNamed: 'PharoDebug.log'.
-		rep nextPutAll: 'Error:'; cr.
-		rep nextPutAll: e asString; cr.
-  		rep nextPutAll: thisContext stack size asString.
- 	  	thisContext stack copy withIndexDo: [:stck :i |
-			[ rep nextPutAll: i asString; space; nextPutAll: stck asString; cr] ifError: []].
-		rep close. 
+	] onErrorDo: [:e |
+		'PharoDebug.log' asFileReference ensureDelete; writeStreamDo: [ :rep |
+			rep nextPutAll: 'Error:'; cr.
+			rep nextPutAll: e asString; cr.
+	  		rep nextPutAll: thisContext stack size asString.
+	 	  	thisContext stack copy withIndexDo: [:stck :i |
+				[ rep nextPutAll: i asString; space; nextPutAll: stck asString; cr] onErrorDo: []]]. 
 		Smalltalk exitFailure ]
 ]
 
@@ -1460,7 +1459,7 @@ SmalltalkImage >> recreateSpecialObjectsArray [
 	If you are writing a plugin and need additional special object(s) for your own use, 
 	use addGCRoot() function and use own, separate special objects registry "
 	
-	"The Special Objects Array is an array of objects used by the Squeak virtual machine.
+	"The Special Objects Array is an array of objects used by the virtual machine.
 	 Its contents are critical and accesses to it by the VM are unchecked, so don't even
 	 think of playing here unless you know what you are doing."
 	
@@ -1504,7 +1503,7 @@ SmalltalkImage >> removeAllLineFeedsQuietlyCalling: aBlock [
 					oldCodeString := cls sourceCodeAt: selector.
 					(oldCodeString includes: Character lf)
 						ifTrue: [
-							newCodeString := oldCodeString withSqueakLineEndings.
+							newCodeString := oldCodeString withInternalLineEndings.
 							nameString := cls name , '>>' , selector.
 							((cls compiledMethodAt: selector) hasLiteralSuchThat: [ :lit | lit asString includes: Character lf ])
 								ifTrue: [(authors at: 'OK')
@@ -1581,21 +1580,6 @@ SmalltalkImage >> renameClassNamed: oldName as: newName [
 	^ globals renameClassNamed: oldName as: newName
 ]
 
-{ #category : #'memory space' }
-SmalltalkImage >> rootTable [
-	"Primitive. Answer a snapshot of the VMs root table. 
-	Keep in mind that the primitive may itself cause GC."
-	<primitive: 'primitiveRootTable'>
-	^self primitiveFailed
-]
-
-{ #category : #'memory space' }
-SmalltalkImage >> rootTableAt: index [
-	"Primitive. Answer the nth element of the VMs root table"
-	<primitive: 'primitiveRootTableAt'>
-	^nil
-]
-
 { #category : #saving }
 SmalltalkImage >> saveAs [
 	"Put up the 'saveAs' prompt, obtain a name, and save the image  under that new name."
@@ -1622,22 +1606,23 @@ SmalltalkImage >> saveAs: newNameWithoutSuffix [
 { #category : #saving }
 SmalltalkImage >> saveAsNewVersion [
 	"Save the image/changes using the next available version number."
-	"SmalltalkImage current saveAsNewVersion"
-	
-	| newImageFile newChangesFile strippedName |
-	newImageFile := self imageFile nextVersion.
-	newChangesFile := newImageFile withExtension: self changesSuffix.
 
-	newChangesFile exists ifTrue:
-		[^self inform:
-'There is already .changes file of the desired name,
-', newChangesFile fullName, '
+	"SmalltalkImage current saveAsNewVersion"
+
+	| newImageFile strippedName |
+	newImageFile := self imageFile nextVersion.
+	(newImageFile withExtension: self changesSuffix)
+		ifExists: [ :newChangesFile | 
+			^ self
+				inform:
+					'There is already .changes file of the desired name,
+' , newChangesFile fullName , '
 curiously already present, even though there is
-no corresponding .', self imageSuffix,' file.   Please remedy
-manually and then repeat your request.'].
+no corresponding .' , self imageSuffix , ' file.   Please remedy
+manually and then repeat your request.' ].
 
 	strippedName := self stripImageExtensionFrom: newImageFile fullName.
-	^self saveAs: strippedName
+	^ self saveAs: strippedName
 ]
 
 { #category : #saving }

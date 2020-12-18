@@ -18,12 +18,18 @@ ClassTest >> categoryNameForTemporaryClasses [
 	^'Dummy-Tests-Class' 
 ]
 
+{ #category : #coverage }
+ClassTest >> classToBeTested [
+	
+	^ Class
+]
+
 { #category : #setup }
 ClassTest >> deleteClass [
 	| cl |
 	cl := testEnvironment at: className ifAbsent: [ ^ self ].
 	
-	Smalltalk globals at: #ChangeSet ifPresent: [ 
+	testingEnvironment at: #ChangeSet ifPresent: [ 
 		cl removeFromChanges ].
 	
 	cl removeFromSystemUnlogged
@@ -148,14 +154,92 @@ ClassTest >> testClassSide [
 ]
 
 { #category : #tests }
+ClassTest >> testClassVariableEntanglement [ 
+	| firstClassName firstClass secondClassName secondClass thirdClassName thirdClass |
+
+	firstClassName := 'MyFirstClass'.
+	firstClass := Object subclass: firstClassName
+		instanceVariableNames: ''
+		classVariableNames: 'MyVar'
+		package: self categoryNameForTemporaryClasses.
+	[ 
+
+		firstClass class compile: 'myVar
+	^ MyVar'.
+		firstClass class compile: 'myVar: anObject
+	MyVar := anObject'.
+
+		secondClassName := 'MySecondClass'.
+		secondClass := Object subclass: secondClassName
+			instanceVariableNames: ''
+			classVariableNames: 'MyVar'
+			package: self categoryNameForTemporaryClasses.
+		[ 
+
+			secondClass class compile: 'myVar
+	^ MyVar'.
+			secondClass class compile: 'myVar: anObject
+		MyVar := anObject'.
+
+			thirdClassName := 'MyThirdClass'.
+			thirdClass := secondClass duplicateClassWithNewName: thirdClassName.
+			[ 
+
+				self assert: firstClass myVar equals: nil.
+				self assert: secondClass myVar equals: nil.
+				self assert: thirdClass myVar equals: nil.
+	
+				firstClass myVar: 123.
+				self assert: firstClass myVar equals: 123.
+				self assert: secondClass myVar equals: nil.
+				self assert: thirdClass myVar equals: nil.
+
+				secondClass myVar: 456.
+				self assert: firstClass myVar equals: 123.
+				self assert: secondClass myVar equals: 456.
+				self assert: thirdClass myVar equals: nil.
+
+				thirdClass myVar: 789.
+				self assert: firstClass myVar equals: 123.
+				self assert: secondClass myVar equals: 456.
+				self assert: thirdClass myVar equals: 789.
+
+			 ] ensure: [ 
+				thirdClass 
+					removeFromChanges;
+					removeFromSystemUnlogged ].
+		 ] ensure: [ 
+			secondClass 
+				removeFromChanges;
+				removeFromSystemUnlogged ].
+	 ] ensure: [ 
+		firstClass 
+			removeFromChanges;
+			removeFromSystemUnlogged ].
+
+]
+
+{ #category : #tests }
+ClassTest >> testCommonSuperclassWith [
+	self assert: (OrderedCollection commonSuperclassWith: Array) equals: SequenceableCollection.
+	self assert: (OrderedCollection commonSuperclassWith: OrderedCollection) equals: SequenceableCollection.
+	"if the reveiver is the common superclass, return it"
+	self assert: (ProtoObject commonSuperclassWith: Object) equals: ProtoObject.
+	"but the other way this is not true"
+	self assert: (Object commonSuperclassWith: ProtoObject) equals: nil.
+	"as nil is the terminator of the hierarchy, we have to support it"
+	self assert: (nil commonSuperclassWith: ProtoObject) equals: nil.
+]
+
+{ #category : #tests }
 ClassTest >> testCompileAll [
 	ClassTest compileAll
 ]
 
 { #category : #'tests - dependencies' }
 ClassTest >> testDependencies [
-	self assert: (ClassTest dependentClasses includes: ClassTest superclass).
-	self assert: (ClassTest dependentClasses includes: Date)
+	self assert: (self class dependentClasses includes: self class superclass).
+	self assert: (self class dependentClasses includes: Date)
 ]
 
 { #category : #accessing }
@@ -166,6 +250,15 @@ ClassTest >> testEnvironment [
 { #category : #accessing }
 ClassTest >> testEnvironment: anObject [
 	testEnvironment := anObject
+]
+
+{ #category : #tests }
+ClassTest >> testHasBindingThatBeginsWith [
+	self assert: (SmalltalkImage hasBindingThatBeginsWith: 'Compiler').
+	self assert: (SmalltalkImage hasBindingThatBeginsWith: 'Object').
+	
+	"Pools are looked up, too"
+	self assert: (TimeZone hasBindingThatBeginsWith: 'DaysInMo')
 ]
 
 { #category : #'tests - access' }
@@ -244,14 +337,14 @@ ClassTest >> testMethodsReferencingClasses [
 ClassTest >> testNewSubclass [
 	| cls |
 	cls := Point newSubclass.
-	self assert: (cls isBehavior).
-	self assert: (cls superclass == Point).
+	self assert: cls isBehavior.
+	self assert: cls superclass identicalTo: Point.
 	self assert: (Point allSubclasses includes: cls).
-	self assert: (cls instVarNames = #()).
-	self assert: (cls category = self unclassifiedCategory).
-	self assert: (cls classVarNames = #()).
-	
-	cls removeFromSystem.
+	self assert: cls instVarNames equals: #().
+	self assert: cls category equals: self unclassifiedCategory.
+	self assert: cls classVarNames equals: #().
+
+	cls removeFromSystem
 ]
 
 { #category : #'tests - file in/out' }
@@ -293,30 +386,31 @@ ClassTest >> testOrdersMetaClassAfterItsClassInstance [
 { #category : #'tests - pools' }
 ClassTest >> testPoolVariableAccessibleInClassUser [
 	"This test shows that a Pool Variable is accessible from the class that declare the Pool usage: here the superclass"
- 
+
 	PoolDefiner initialize.
 	RootClassPoolUser compileAll.
-	
-	self assert: RootClassPoolUser gloups = 42.
-	self assert: RootClassPoolUser author = 'Ducasse'
+
+	self assert: RootClassPoolUser gloups equals: 42.
+	self assert: RootClassPoolUser author equals: 'Ducasse'
 ]
 
 { #category : #'tests - pools' }
 ClassTest >> testPoolVariableAccessibleInSubclassOfClassUser [
 	"This test shows that a Pool Variable is not accessible from a subclass that declare the Pool usage: here SubFlop subclass of Flop and this is a bug. "
- 
+
 	PoolDefiner initialize.
 	SubclassPoolUser compileAll.
-	
-	self assert: SubclassPoolUser gloups = 42.
-	self assert: SubclassPoolUser author = 'Ducasse'
+
+	self assert: SubclassPoolUser gloups equals: 42.
+	self assert: SubclassPoolUser author equals: 'Ducasse'
 ]
 
 { #category : #'tests - navigation' }
 ClassTest >> testReferencedClasses [
 	{(ExceptionTester -> { MyTestNotification. Warning. String. MyResumableTestError. OrderedCollection. MyTestError}). 
 	 (CollectionCombinator -> {Array}).
-	 (ExecutionEnvironmentStub -> {OrderedCollection})
+	 (ExecutionEnvironmentStub -> {OrderedCollection}).
+	 (ReferencedClassesTestClass -> {Array. OrderedCollection. Object})
 	}
 		do: [ :assoc | 
 			self assert: assoc key referencedClasses notEmpty.
@@ -369,34 +463,32 @@ ClassTest >> testSharedPools [
 { #category : #'tests - class creation' }
 ClassTest >> testSubclass [
 	| cls |
-	(testEnvironment includesKey: #SubclassExample)
-		ifTrue: [ (testEnvironment at: #SubclassExample) removeFromSystem ].
-	
+	(testEnvironment includesKey: #SubclassExample) ifTrue: [ (testEnvironment at: #SubclassExample) removeFromSystem ].
+
 	self deny: (testEnvironment includesKey: #SubclassExample).
 	cls := Object subclass: #SubclassExample.
 	self assert: (testEnvironment includesKey: #SubclassExample).
 
-	self assert: (testEnvironment at: #SubclassExample) == cls.
+	self assert: (testEnvironment at: #SubclassExample) identicalTo: cls.
 	self assert: cls category equals: self unclassifiedCategory.
 	self assert: cls instVarNames equals: #().
-	
+
 	cls removeFromSystem
 ]
 
 { #category : #'tests - class creation' }
 ClassTest >> testSubclassInstanceVariableNames [
 	| cls |
-	(testEnvironment includesKey: #SubclassExample)
-		ifTrue: [ (testEnvironment at: #SubclassExample) removeFromSystem ].
-	
+	(testEnvironment includesKey: #SubclassExample) ifTrue: [ (testEnvironment at: #SubclassExample) removeFromSystem ].
+
 	self deny: (testEnvironment includesKey: #SubclassExample).
 	cls := Object subclass: #SubclassExample instanceVariableNames: 'x y'.
 	self assert: (testEnvironment includesKey: #SubclassExample).
 
-	self assert: (testEnvironment at: #SubclassExample) == cls.
+	self assert: (testEnvironment at: #SubclassExample) identicalTo: cls.
 	self assert: cls category equals: self unclassifiedCategory.
 	self assert: cls instVarNames equals: #('x' 'y').
-	
+
 	cls removeFromSystem
 ]
 

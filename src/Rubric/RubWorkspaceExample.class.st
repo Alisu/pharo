@@ -97,26 +97,8 @@ RubWorkspaceExample >> getText [
 ]
 
 { #category : #shout }
-RubWorkspaceExample >> guessTypeForName: aString [
-
-	| binding |
-
-	bindings
-		ifNotNil: [ binding := bindings at: aString ifAbsent: [ nil ].
-			binding ifNotNil: [ ^ binding class ]
-			].
-
-	^ nil
-]
-
-{ #category : #shout }
 RubWorkspaceExample >> hasBindingOf: aString [
-	^(self guessTypeForName: aString) notNil
-]
-
-{ #category : #shout }
-RubWorkspaceExample >> hasBindingThatBeginsWith: aString [
-	^false
+	^bindings includesKey: aString asSymbol
 ]
 
 { #category : #initialization }

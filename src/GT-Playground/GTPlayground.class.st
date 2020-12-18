@@ -76,7 +76,8 @@ GTPlayground class >> extentSettingsOn: aBuilder [
 		target: self;
 		parent: #gt;
 		getSelector: #preferredWidth;
-		setSelector: #preferredWidth:; 
+		setSelector: #preferredWidth:;
+		default: 600; 
 		label: 'Playground width';
 		description: 'The preferred width of new Playground windows'.
 	(aBuilder setting: #GTPlaygroundPreferredHeight)
@@ -84,6 +85,7 @@ GTPlayground class >> extentSettingsOn: aBuilder [
 		parent: #gt;
 		getSelector: #preferredHeight;
 		setSelector: #preferredHeight:; 
+		default: 400;
 		label: 'Playground height';
 		description: 'The preferred height of new Playground windows'.
 	(aBuilder setting: #GTPlaygroundRememberPreferredExtent)
@@ -92,6 +94,7 @@ GTPlayground class >> extentSettingsOn: aBuilder [
 		getSelector: #rememberPreferredExtent;
 		setSelector: #rememberPreferredExtent:; 
 		label: 'Remember extent of Playground';
+		default: true;
 		description: 'Enable or disable remembering of the extent of Playground windows on resize. When the preference is true, resizing a Playground window will affect the preferred width and height of future Playground windows'.
 	
 
@@ -114,7 +117,9 @@ GTPlayground class >> menuCommandOn: aBuilder [
 		order: 10;
 		keyText: 'o, w';
 		help: 'A window used as a scratchpad area where fragments of Pharo code can be entered, stored, edited, and evaluated.';
-		icon: (self iconNamed: #workspaceIcon)
+		icon: (self iconNamed: #workspaceIcon).
+	
+	aBuilder withSeparatorAfter	
 ]
 
 { #category : #'instance creation' }
@@ -210,14 +215,19 @@ GTPlayground class >> preferredWidth: aWidth [
 { #category : #'tools registry' }
 GTPlayground class >> register [
 
-	self registerToolsOn: Smalltalk tools
+	Smalltalk tools register: self as: #workspace
 ]
 
 { #category : #'tools registry' }
 GTPlayground class >> registerToolsOn: registry [
 	"Add ourselves to registry. See [Smalltalk tools]"
+	"IMPORTANT: This method is disabled because the bootstrap process initializes tools by traversing
+	 all classes implementing this method in alphabetical order. Since GTPlayground is not anymore the 
+	 default playground, we disable its auto-registration in that step. 
+	 Notice that the #register method still works if needed"
+	
 	"self registerToolsOn: Smalltalk tools" 
-	registry register: self as: #workspace
+	"registry register: self as: #workspace"
 
 ]
 
@@ -261,16 +271,19 @@ GTPlayground class >> settingsOn: aBuilder [
 		getSelector: #isGTPlaygroundEnabled;
 		setSelector: #setGTPlaygroundEnabledStatus:; 
 		label: 'GTPlayground';
+		default: false;
 		description: 'Enable or disable the GTPlayground.'.
 	(aBuilder setting: #cacheDirectory)
 		parent: #gt;
 		type: #Directory;
+		default: GTPlayBook defaultCacheDirectory;
 		target: GTPlayBook;
 		description: 'The path to the local Playground cache that stores all Playground scripts in ph files';
 		label: 'Local Playground cache directory'.
 	(aBuilder setting: #stashDirectory)
 		parent: #gt;
 		type: #Directory;
+		default: (FileLocator localDirectory / 'play-cache') resolve;
 		target: GTPlayBook;
 		description: 'The path to the local Playground stash that stores all named Playground scripts in ph files';
 		label: 'Local Playground stash directory'

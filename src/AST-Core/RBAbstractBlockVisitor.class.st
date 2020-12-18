@@ -13,6 +13,14 @@ Class {
 }
 
 { #category : #enumerating }
+RBAbstractBlockVisitor class >> visit: aTree anySatisfy: aBlock [
+	self
+		visit: aTree
+		do: [ :node | (aBlock value: node) ifTrue: [ ^ true ] ].
+	^ false
+]
+
+{ #category : #enumerating }
 RBAbstractBlockVisitor class >> visit: aTree detect: aBlock [
 	
 	^self visit: aTree detect: aBlock ifNone: [ NotFound signalFor: aBlock ]
@@ -20,14 +28,10 @@ RBAbstractBlockVisitor class >> visit: aTree detect: aBlock [
 
 { #category : #enumerating }
 RBAbstractBlockVisitor class >> visit: aTree detect: aBlock ifNone: anErrorBlock [
-	| result |
-	
-	result := OrderedCollection new.
-	
-	self visit: aTree do: [ :node |
-		(aBlock value: node) ifTrue: [ ^node ] ].
-	
-	^anErrorBlock value
+	self
+		visit: aTree
+		do: [ :node | (aBlock value: node) ifTrue: [ ^ node ] ].
+	^ anErrorBlock value
 ]
 
 { #category : #enumerating }
@@ -35,6 +39,14 @@ RBAbstractBlockVisitor class >> visit: aTree do: aBlock [
 	^self new 
 		visitBlock: aBlock;
 		visitNode: aTree
+]
+
+{ #category : #enumerating }
+RBAbstractBlockVisitor class >> visit: aTree noneSatisfy: aBlock [
+	self
+		visit: aTree
+		do: [ :node | (aBlock value: node) ifTrue: [ ^ false ] ].
+	^ true
 ]
 
 { #category : #enumerating }

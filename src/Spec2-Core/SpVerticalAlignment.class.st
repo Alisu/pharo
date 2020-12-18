@@ -1,8 +1,13 @@
+"
+I represent the vertical scrolling of a presenter.
+You can ask the first and last index of the visible rows.
+I can move the scrolling to make an element visible with the #desiredVisibleRow: method.
+"
 Class {
 	#name : #SpVerticalAlignment,
 	#superclass : #SpAbstractPresenter,
-	#traits : 'TSpObservable',
-	#classTraits : 'TSpObservable classTrait',
+	#traits : 'SpTObservable',
+	#classTraits : 'SpTObservable classTrait',
 	#instVars : [
 		'#firstVisibleRowIndex',
 		'#lastVisibleRowIndex',

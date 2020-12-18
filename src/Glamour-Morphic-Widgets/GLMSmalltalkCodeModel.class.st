@@ -49,19 +49,9 @@ GLMSmalltalkCodeModel >> doItReceiver [
 	^ self glamourPresentation doItReceiver 
 ]
 
-{ #category : #completion }
-GLMSmalltalkCodeModel >> guessTypeForName: aString [ 
-	^ nil
-]
-
 { #category : #accessing }
 GLMSmalltalkCodeModel >> hasBindingOf: aSymbol [
 	^ self variableBindings includesKey: aSymbol
-]
-
-{ #category : #accessing }
-GLMSmalltalkCodeModel >> hasBindingThatBeginsWith: aString [
-	^ self variableBindings keys anySatisfy: [:each | each beginsWith: aString]
 ]
 
 { #category : #accessing }

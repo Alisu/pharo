@@ -10,7 +10,7 @@ Class {
 
 { #category : #helpers }
 SlotAnnouncementsTest >> collectedAnnouncementClasses [
-	^ collectedAnnouncements collect: #class
+	^ collectedAnnouncements collect: [:each | each class]
 ]
 
 { #category : #helpers }
@@ -170,19 +170,16 @@ SlotAnnouncementsTest >> testClassCreationShouldAnnounceClassAdded [
 
 { #category : #tests }
 SlotAnnouncementsTest >> testClassRecategorizationShouldAnnounceClassModified [
-
 	self subscribeOn: ClassRecategorized.
-	
-	aClass := self make: [ :builder|
-		builder category: self aCategory ].	
-	anotherClass := self make: [ :builder|
-		builder category: self anotherCategory ].
-	
+
+	aClass := self make: [ :builder | builder category: self aCategory ].
+	anotherClass := self make: [ :builder | builder category: self anotherCategory ].
+
 	self assert: self collectedAnnouncements size equals: 1.
-	announcement := self collectedAnnouncements first.	
+	announcement := self collectedAnnouncements first.
 	self assert: announcement oldCategory equals: self aCategory.
 	self assert: announcement newCategory equals: self anotherCategory.
-	self assert: announcement classRecategorized == anotherClass
+	self assert: announcement classRecategorized identicalTo: anotherClass
 ]
 
 { #category : #'tests-comments' }
@@ -207,7 +204,7 @@ SlotAnnouncementsTest >> testCreateAndChangeWithCommentDoesAnnounceBoth [
 	self assert: classCommented classCommented equals: aClass.
 	self assert: classCommented oldComment equals: ''.
 	self assert: classCommented newComment equals: 'A class Comment'.
-	self assert: classCommented oldStamp equals: nil. "why nil?" 
+	self assert: classCommented oldStamp equals: ''.
 	self assert: classCommented newStamp equals: nil. "why nil?"
 	
 	classCommented := self collectedAnnouncements second.
@@ -251,7 +248,7 @@ SlotAnnouncementsTest >> testCreateWithCommentDoesAnnounce [
 	self assert: classCommented classCommented equals: aClass.
 	self assert: classCommented oldComment equals: ''.
 	self assert: classCommented newComment equals: 'A class Comment'.
-	self assert: classCommented oldStamp equals: nil. "why nil?" 
+	self assert: classCommented oldStamp equals: ''.
 	self assert: classCommented newStamp equals: nil  "why nil?"
 ]
 

@@ -3,12 +3,10 @@ I am an abstract superclass for different bytecode set encoders.  Subclasses inh
 "
 Class {
 	#name : #BytecodeEncoder,
-	#superclass : #Encoder,
+	#superclass : #Object,
 	#instVars : [
 		'stream',
-		'position',
-		'rootNode',
-		'blockExtentsToLocals'
+		'position'
 	],
 	#category : #'Kernel-BytecodeEncoders'
 }
@@ -36,6 +34,14 @@ BytecodeEncoder class >> isExtension: byte [
 	^self subclassResponsibility
 ]
 
+{ #category : #accessing }
+BytecodeEncoder class >> literalMethodBytecodes [
+	"A literal method is a method that just answers a literal value. 
+	 This is a constant sequence of bytecodes but it changes between enconders"
+
+	^ self subclassResponsibility
+]
+
 { #category : #'bytecode decoding' }
 BytecodeEncoder class >> nonExtensionBytecodeAt: pc in: method [
 	"Answer the actual bytecode at pc in method, skipping past any preceeding extensions."
@@ -57,6 +63,12 @@ BytecodeEncoder class >> nonExtensionPcAt: pc in: method [
 ]
 
 { #category : #'bytecode decoding' }
+BytecodeEncoder class >> quickPrimSpecialConstants [
+	"Note: they are different from the encoder special literals."
+	^ #(true false nil -1 0 1 2) 
+]
+
+{ #category : #'bytecode decoding' }
 BytecodeEncoder class >> specialSelectors [	
 	^ #(#+ #- #< #> #'<=' #'>=' #= #'~=' #* #/ #'\\' #@ #bitShift: #'//' #bitAnd: #bitOr: #at: #at:put: #size #next #nextPut: #atEnd #'==' nil "class" #'~~' #value #value: #do: #new #new: #x #y)
 ]
@@ -66,41 +78,6 @@ BytecodeEncoder class >> stackDeltaForPrimitive: primitiveIndex in: method [
 	"This is the default implementation. Subclasses with inline primitives
 	will need to override."
 	^ 0
-]
-
-{ #category : #temps }
-BytecodeEncoder >> bindAndJuggle: name [
-	"This is used to insert a new temp and reorder temps on editing.
-	 It doesn't really work for closure compilation since we have multiple
-	 locations for temps.  Simply signal a reparse is necessary."
-
-	ReparseAfterSourceEditing signal
-]
-
-{ #category : #temps }
-BytecodeEncoder >> blockExtentsToTempsMap [
-	"Answer a Dictionary of blockExtent to temp locations for the current method.
-	 This is used by the debugger to locate temp vars in contexts.  A temp map
-	 entry is a pair of the temp's name and its index, where an index is either an
-	 integer for a normal temp or a pair of the index of the indirect temp vector
-	 containing  the temp and the index of the temp in its indirect temp vector."
-	| blockExtentsToTempsMap |
-	blockExtentsToLocals ifNil:
-		[^nil].
-	blockExtentsToTempsMap := Dictionary new.
-	blockExtentsToLocals keysAndValuesDo:
-		[:blockExtent :locals|
-		blockExtentsToTempsMap
-			at: blockExtent
-			put: (Array streamContents:
-					[:str|
-					locals withIndexDo:
-						[:local :index|
-						local isIndirectTempVector
-							ifTrue: [local remoteTemps withIndexDo:
-										[:remoteLocal :innerIndex| str nextPut: { remoteLocal key. { index. innerIndex } }]]
-							ifFalse: [str nextPut: { local key. index }]]])].
-	^blockExtentsToTempsMap
 ]
 
 { #category : #'bytecode generation' }
@@ -114,9 +91,9 @@ BytecodeEncoder >> genPushSpecialLiteral: aLiteral [
 	self subclassResponsibility
 ]
 
-{ #category : #testing }
-BytecodeEncoder >> hasGeneratedMethod [
-	^blockExtentsToLocals notNil
+{ #category : #'bytecode generation' }
+BytecodeEncoder >> genPushThisProcess [
+	"only available in Sista BC"
 ]
 
 { #category : #accessing }
@@ -131,29 +108,12 @@ BytecodeEncoder >> nextPut: aByte [
 	position := position + 1
 ]
 
-{ #category : #temps }
-BytecodeEncoder >> noteBlockExtent: blockExtent hasLocals: tempNodes [
-	blockExtentsToLocals ifNil:
-		[blockExtentsToLocals := Dictionary new].
-	blockExtentsToLocals at: blockExtent put: tempNodes asArray
-]
-
 { #category : #'bytecode generation' }
 BytecodeEncoder >> outOfRangeError: string index: index range: rangeStart to: rangeEnd [
 	"For now..."
-	^self error: thisContext sender method selector, ' ', string
+	^self error: thisContext sender compiledCode method selector, ' ', string
 				, ' index ', index printString
 				, ' is out of range ', rangeStart printString, ' to ', rangeEnd printString
-]
-
-{ #category : #accessing }
-BytecodeEncoder >> rootNode [ "^<BlockNode>"
-	^rootNode
-]
-
-{ #category : #accessing }
-BytecodeEncoder >> rootNode: node [ "<BlockNode>"
-	rootNode := node
 ]
 
 { #category : #'opcode sizing' }
@@ -262,6 +222,11 @@ BytecodeEncoder >> sizePushThisContext [
 ]
 
 { #category : #'opcode sizing' }
+BytecodeEncoder >> sizePushThisProcess [
+	^self sizeOpcodeSelector: #genPushThisProcess withArguments: #()
+]
+
+{ #category : #'opcode sizing' }
 BytecodeEncoder >> sizeReturnReceiver [
 	^self sizeOpcodeSelector: #genReturnReceiver withArguments: #()
 ]
@@ -356,16 +321,4 @@ BytecodeEncoder >> stream: s [
 BytecodeEncoder >> streamToMethod: aCompiledMethod [
 	stream := WriteStream with: aCompiledMethod.
 	stream position: aCompiledMethod initialPC - 1
-]
-
-{ #category : #testing }
-BytecodeEncoder >> supportsClosureOpcodes [
-	"Answer if the receiver supports the
-		genPushNewArray:/genPushConsArray:
-		genPushRemoteTemp:inVectorAt:
-		genStoreRemoteTemp:inVectorAt:
-		genStorePopRemoteTemp:inVectorAt:
-		genPushClosureCopyCopiedValues:numArgs:jumpSize:
-	 opcodes"
-	^false
 ]

@@ -389,16 +389,6 @@ RPackage >> category: categoryName matches: prefix [
 	^(categoryName at: prefix size + 1 ifAbsent: [ ^true ]) = $-
 ]
 
-{ #category : #'system compatibility' }
-RPackage >> changeRecordForOverriddenMethod: aMethodDefinition [
-	^ SourceFiles
-		changeRecordsFor: aMethodDefinition 
-		detect: [ :protocol | 
-			self 
-				includesMethodCategory: protocol 
-				ofClass: aMethodDefinition actualClass ]
-]
-
 { #category : #slices }
 RPackage >> classDefinedSlicesDo: aBlock [
 	"This method iterates over the defined class and their associated selectors. a slice is a class * list of selectors. aBlock will be applied to all the extensions slices of the receiver. aBlok first argument is the class and the second argument a list of method selectors"
@@ -445,7 +435,7 @@ RPackage >> classNamesForClassTag: aSymbol [
 
 { #category : #'class tags' }
 RPackage >> classTagCategoryNames [
-	^ (Set with: self packageName), (self classTags collect: #categoryName).
+	^ (Set with: self packageName), (self classTags collect: [:each | each categoryName]).
 ]
 
 { #category : #'class tags' }
@@ -491,16 +481,6 @@ RPackage >> classes [
 	
 ]
 
-{ #category : #'system compatibility' }
-RPackage >> classesAndMetaClasses [
-	"Return a Set with all classes and metaclasses belonging to this package"
-	self flag: #stef. "only used by goferCleanUp"
-	^ OrderedCollection new
-		addAll: self definedClasses;
-		addAll: (self definedClasses collect: [:each | each classSide]);
-		yourself.
-]
-
 { #category : #'class tags' }
 RPackage >> classesForClassTag: aSymbol [
 	"Returns the classes tagged using aSymbol"
@@ -517,14 +497,6 @@ RPackage >> classesTaggedWith: aSymbol [
 	This method select all classes which are tagged by given symbol"
 	
 	^(self classTagNamed: aSymbol) classes
-]
-
-{ #category : #'system compatibility' }
-RPackage >> coreCategoriesForClass: aClass [
-
-	self flag: #stef. "only used by goferCleanUp"
-	^ aClass organization categories 
-		reject: [ :cat | self isForeignClassExtension: cat ]
 ]
 
 { #category : #accessing }
@@ -715,12 +687,6 @@ RPackage >> extensionCategoriesForClass: aClass [
 		select: [ :cat | self isYourClassExtension: cat ]
 ]
 
-{ #category : #'system compatibility' }
-RPackage >> extensionClasses [
-	self flag: #stef. "only used by RB and Gofer"
-	^ self extendedClasses
-]
-
 { #category : #accessing }
 RPackage >> extensionMethods [
 	"Extension methods are methods defined on classes that are not defined in the receiver"
@@ -766,7 +732,13 @@ RPackage >> extensionsForTag: aRPackageTag [
 
 	^ self extensionMethods select: [ :extensionMethod | | category |
 		category := extensionMethod protocol allButFirst.
-		self category:  category matches: aRPackageTag categoryName ]
+		self category: category matches: aRPackageTag categoryName ]
+]
+
+{ #category : #properties }
+RPackage >> hasProperty: aKey [
+	self propertyAt: aKey ifAbsent: [ ^ false ].
+	^ true
 ]
 
 { #category : #accessing }
@@ -814,16 +786,13 @@ RPackage >> importPackage: anRPackage [
 ]
 
 { #category : #private }
-RPackage >> importProtocol: aProtocol forClass: aClass [ 
-	"import all the methods of a protocol as defined in the receiver." 
-	
-		(aClass organization listAtCategoryNamed: aProtocol)
-			do: [:each | 
-				| aCompiledMethod |
-				aCompiledMethod := (aClass >> each).
-				aCompiledMethod isFromTrait ifFalse: [ self addMethod: aCompiledMethod ]].
-	
-	
+RPackage >> importProtocol: aProtocol forClass: aClass [
+	"import all the methods of a protocol as defined in the receiver."
+
+	(aClass organization listAtCategoryNamed: aProtocol) do: [ :each | 
+		aClass
+			compiledMethodAt: each
+			ifPresent: [ :method | method isFromTrait ifFalse: [ self addMethod: method ] ] ]
 ]
 
 { #category : #testing }
@@ -844,6 +813,13 @@ RPackage >> includesClassNamed: aSymbol [
 { #category : #testing }
 RPackage >> includesClassTagNamed: aString [
 	^ self classTags anySatisfy: [ :each | each name = aString ]
+]
+
+{ #category : #testing }
+RPackage >> includesClassesAffectedBy: aSystemAnnouncement [
+
+	^(aSystemAnnouncement affectsClassesDefinedInPackage: self)
+		or: [ aSystemAnnouncement affectsClassesExtendedInPackage: self ]
 ]
 
 { #category : #testing }
@@ -905,6 +881,12 @@ RPackage >> includesMethodCategory: categoryName ofClass: aClass [
 	^ (self isYourClassExtension: categoryName)
 		or: [(self includesClass: aClass)
 				and: [(self isForeignClassExtension: categoryName) not]]
+]
+
+{ #category : #testing }
+RPackage >> includesMethodsAffectedBy: aSystemAnnouncement [
+
+	^aSystemAnnouncement affectsMethodsDefinedInPackage: self
 ]
 
 { #category : #testing }
@@ -1011,12 +993,6 @@ RPackage >> metaclassExtensionSlicesDo: aBlock [
 { #category : #'system compatibility' }
 RPackage >> methodCategoryPrefix [
 	^ '*', self name asLowercase
-]
-
-{ #category : #'system compatibility' }
-RPackage >> methodReferences [
-	
-	^ self methods collect: [:each | each methodReference] thenSelect: [:each| each isValid and: [each isLocalSelector]].
 ]
 
 { #category : #accessing }
@@ -1446,7 +1422,7 @@ RPackage >> renameTo: aSymbol [
 	newName := aSymbol asSymbol.
 	repositoryGroup := self mcPackage workingCopy repositoryGroup.
 	self organizer validatePackageDoesNotExist: aSymbol.
-	oldCategoryNames := (self classTags collect: #categoryName as: Set)
+	oldCategoryNames := (self classTags collect: [:each | each categoryName] as: Set)
 		add: self name;
 		difference: {newName}.
 	self name: aSymbol.
@@ -1530,7 +1506,7 @@ RPackage >> tagsForClasses [
 	"Any class could be tagged for user purpose.
 	Now we implement it on top of RPackageTag"
 	
-	^self classTags reject: #isRoot thenCollect: #name
+	^self classTags reject: [:each | each isRoot] thenCollect: [:each | each name]
 ]
 
 { #category : #private }

@@ -40,8 +40,6 @@ PharoBootstrapRule >> bootstrapPackages [
 	#Kernel
 	#Monticello
 	#'Multilingual-Encodings'
-	#'Multilingual-Languages'
-	#'Multilingual-TextConversion'
 	#'Network-UUID'
 	#'OpalCompiler-Core'
 	#'Random-Core'
@@ -87,7 +85,7 @@ PharoBootstrapRule >> bootstrapPackages [
 
 { #category : #accessing }
 PharoBootstrapRule >> collectionsPackages [
-	^ (CollectionsAssembly parts collect: #key)
+	^ (CollectionsAssembly parts collect: [:part| part key])
 		reject: [ :each | each = #'Collections-Atomic' ]
 ]
 

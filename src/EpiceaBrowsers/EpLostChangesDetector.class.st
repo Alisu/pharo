@@ -108,14 +108,13 @@ EpLostChangesDetector >> lostChanges [
 EpLostChangesDetector >> openBrowserIfLostChanges [
 
 	| lostChanges lostChangesLog browser |
-	lostChanges := self lostChanges collect: #content.
+	lostChanges := self lostChanges collect: [:each | each content].
 	lostChanges ifEmpty: [ ^ self ].
-	lostChangesLog := EpLog newWithStore: (OmMemoryStore withAll: lostChanges).
+	lostChangesLog := EpLog newWithStore: (OmMemoryStore withAllContents: lostChanges).
 
 	browser := EpLogBrowserPresenter newWithLog: lostChangesLog.
-	browser
-		refresh;
-		title: 'Epicea - Lost Changes Detected';
-		openWithSpec.
+	browser refresh.
+	browser withWindowDo: [ :w | w title: 'Epicea - Lost Changes Detected'].
+	browser openWithSpec.
 
 ]

@@ -61,6 +61,12 @@ ClyTextEditorToolMorph >> bindingOf: aString [
 	^self selectedClassOrMetaClass bindingOf: aString
 ]
 
+{ #category : #'rubric interaction model' }
+ClyTextEditorToolMorph >> bindings [
+	"no additional bindings provided by the Requestor"
+	^#() asDictionary
+]
+
 { #category : #updating }
 ClyTextEditorToolMorph >> browserContextWasChanged [
 	"We should ignore any notifications during applying changes 
@@ -197,20 +203,8 @@ ClyTextEditorToolMorph >> findAnyString: strings in: text [
 ]
 
 { #category : #'rubric interaction model' }
-ClyTextEditorToolMorph >> guessTypeForName: aString [
-	^nil
-]
-
-{ #category : #'rubric interaction model' }
 ClyTextEditorToolMorph >> hasBindingOf: aString [ 
 	^self selectedClassOrMetaClass hasBindingOf: aString
-]
-
-{ #category : #'rubric interaction model' }
-ClyTextEditorToolMorph >> hasBindingThatBeginsWith: aString [ 
-	^self selectedClassOrMetaClass 
-		ifNil: [ false ]
-		ifNotNil: [:c | c hasBindingThatBeginsWith: aString]
 ]
 
 { #category : #testing }
@@ -349,7 +343,8 @@ ClyTextEditorToolMorph >> update [
 
 { #category : #testing }
 ClyTextEditorToolMorph >> wantsStayInDifferentContext [
-	^super wantsStayInDifferentContext | applyingChanges
+
+	^ applyingChanges or: [ super wantsStayInDifferentContext ]
 ]
 
 { #category : #testing }

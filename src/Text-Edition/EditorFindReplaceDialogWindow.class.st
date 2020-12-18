@@ -13,7 +13,10 @@ Class {
 		'Replacements',
 		'Singleton'
 	],
-	#category : #'Text-Edition'
+	#classInstVars : [
+		'defaultFindReplaceServiceClass'
+	],
+	#category : #'Text-Edition-UI'
 }
 
 { #category : #initializing }
@@ -21,6 +24,12 @@ EditorFindReplaceDialogWindow class >> cleanUp [
 	Singleton ifNotNil: [ 
 			Singleton close.
 			Singleton := nil ]
+]
+
+{ #category : #accessing }
+EditorFindReplaceDialogWindow class >> defaultFindReplaceServiceClass [
+
+	^ defaultFindReplaceServiceClass ifNil: [ FindReplaceService ]
 ]
 
 { #category : #accessing }
@@ -98,6 +107,12 @@ EditorFindReplaceDialogWindow >> defaultButton [
 		findDeepSubmorphThat: [:m |
 			(m isKindOf: PluggableButtonMorph) and: [m actionSelector = #find]]
 		ifAbsent: [] 
+]
+
+{ #category : #accessing }
+EditorFindReplaceDialogWindow >> defaultFindReplaceServiceClass [
+
+	^ self class defaultFindReplaceServiceClass
 ]
 
 { #category : #'user-interface' }
@@ -239,7 +254,7 @@ EditorFindReplaceDialogWindow >> newFindButton [
 			arguments: nil
 			getEnabled: #findEnabled
 			label: 'Find' translated
-			help: 'Find the next occurence' translated)
+			help: 'Find the next occurrence' translated)
 		hResizing: #rigid;
 		vResizing: #rigid
 ]
@@ -288,7 +303,7 @@ EditorFindReplaceDialogWindow >> newReplaceAllButton [
 		arguments: nil
 		getEnabled: #replaceAllEnabled
 		label: 'Replace all' translated
-		help: 'Replace all occurences' translated) hResizing: #rigid;
+		help: 'Replace all occurrences' translated) hResizing: #rigid;
 		 vResizing: #rigid
 ]
 
@@ -302,7 +317,7 @@ EditorFindReplaceDialogWindow >> newReplaceButton [
 		arguments: nil
 		getEnabled: #replaceEnabled
 		label: 'Replace' translated
-		help: 'Replace the next occurence' translated) hResizing: #rigid;
+		help: 'Replace the next occurrence' translated) hResizing: #rigid;
 		 vResizing: #rigid
 ]
 
@@ -354,7 +369,7 @@ EditorFindReplaceDialogWindow >> on: aTextView [
 
 { #category : #action }
 EditorFindReplaceDialogWindow >> open [
-	self openAsIsIn: self currentWorld.
+	self openInWorld.
 	self extent: self extent.
 	self activate
 
@@ -422,7 +437,7 @@ EditorFindReplaceDialogWindow >> searchBackwards: aBoolean [
 
 { #category : #accessing }
 EditorFindReplaceDialogWindow >> state [
-	^ state ifNil: [self state: FindReplaceService new]
+	^ state ifNil: [self state: (self defaultFindReplaceServiceClass newFor: self)]
 ]
 
 { #category : #accessing }

@@ -96,14 +96,41 @@ FileReferenceTest >> testAsAbsoluteConverted [
 FileReferenceTest >> testAsAbsoluteIdentity [
 	| ref |
 	ref := filesystem / 'plonk'.
-	self assert: ref asAbsolute == ref
+	self assert: ref asAbsolute identicalTo: ref
+]
+
+{ #category : #tests }
+FileReferenceTest >> testAsFileLocatorOrReferenceReturnsALocatorWhenStringRefersToAKnownOrigin [
+	| fileRef locator |
+	fileRef := (FileLocator home / 'foo') asFileReference.
+	
+	locator := fileRef asFileLocatorOrReference.
+		
+	self
+		assert: locator origin
+		equals: #home.
+	self
+		assert: locator fullName
+		equals: fileRef fullName.
+]
+
+{ #category : #tests }
+FileReferenceTest >> testAsFileLocatorOrReferenceReturnsAReferenceWhenStringDoesNotReferToAKnownOrigin [
+	| fileRef result |
+	fileRef := '/foo' asFileReference.
+	
+	result := fileRef asFileLocatorOrReference.
+	
+	self
+		assert: result
+		equals: fileRef.
 ]
 
 { #category : #tests }
 FileReferenceTest >> testAsReference [
 	| ref |
 	ref := filesystem * 'plonk'.
-	self assert: ref asFileReference == ref
+	self assert: ref asFileReference identicalTo: ref
 ]
 
 { #category : #tests }
@@ -459,7 +486,7 @@ FileReferenceTest >> testEqual [
 	| a b |
 	a := filesystem * 'plonk'.
 	b := filesystem * 'plonk'.
-	self deny: a == b.
+	self deny: a identicalTo: b.
 	self assert: a equals: b
 ]
 
@@ -492,11 +519,11 @@ FileReferenceTest >> testGlob [
 	filesystem createDirectory: '/alpha/gamma'.
 	ref := filesystem root.
 	children := ref glob: [ :node | true ].
-	self assert: children size == 4.	"including root"
+	self assert: children size identicalTo: 4.	"including root"
 	children := ref glob: [ :node | node basename size > 1 ].
-	self assert: children size == 3.	"without root"
+	self assert: children size identicalTo: 3.	"without root"
 	children := ref glob: [ :node | node basename = #gamma ].
-	self assert: children size == 1.	"gamma"
+	self assert: children size identicalTo: 1.	"gamma"
 	self assert: children first basename equals: #gamma ]
 		ensure: [ (filesystem / 'alpha') ensureDeleteAll ]
 ]
@@ -552,6 +579,39 @@ FileReferenceTest >> testHasFiles [
 	self assert: (ref / 'beta') hasFiles.
 	self deny: (ref / 'beta' / 'gamma') hasFiles ]
 		ensure: [ (filesystem / 'alpha') ensureDeleteAll ]
+]
+
+{ #category : #tests }
+FileReferenceTest >> testIfAbsent [
+	| reference |
+	reference := filesystem / 'plonk'.
+	reference ensureCreateFile.
+	[ reference ifAbsent: [ :file | self fail ].
+	reference delete.
+	self assert: (reference ifAbsent: [ 'plonk' ]) equals: 'plonk' ]
+		ensure: [ reference ensureDelete ]
+]
+
+{ #category : #tests }
+FileReferenceTest >> testIfExists [
+	| reference |
+	reference := filesystem / 'plonk'.
+	reference ensureCreateFile.
+	[ self assert: (reference ifExists: [ :file | file basename ]) equals: 'plonk'.
+	reference delete.
+	reference ifExists: [ :file | self fail ] ]
+		ensure: [ reference ensureDelete ]
+]
+
+{ #category : #tests }
+FileReferenceTest >> testIfExistsIfAbsent [
+	| reference |
+	reference := filesystem / 'plonk'.
+	reference ensureCreateFile.
+	[ self assert: (reference ifExists: [ true ] ifAbsent: [ false ]).
+	reference delete.
+	self assert: (reference ifExists: [ false ] ifAbsent: [ true ]) ]
+		ensure: [ reference ensureDelete ]
 ]
 
 { #category : #tests }
@@ -795,7 +855,7 @@ FileReferenceTest >> testParentResolutionWithAbsoluteReference [
 	base := filesystem / '/plonk' / 'pinto'.
 	relative := filesystem / 'griffle' / 'zonk'.
 	absolute := base resolve: relative.
-	self assert: absolute fileSystem == relative fileSystem.
+	self assert: absolute fileSystem identicalTo: relative fileSystem.
 	self assert: absolute isAbsolute.
 	self assert: (absolute path at: 1) equals: 'griffle'.
 	self assert: (absolute path at: 2) equals: 'zonk'
@@ -981,14 +1041,14 @@ FileReferenceTest >> testRenameTargetExists [
 FileReferenceTest >> testResolve [
 	| ref |
 	ref := filesystem / 'griffle'.
-	self assert: ref resolve == ref
+	self assert: ref resolve identicalTo: ref
 ]
 
 { #category : #tests }
 FileReferenceTest >> testRootParent [
 	| root |
 	root := filesystem root.
-	self assert: root parent == root
+	self assert: root parent identicalTo: root
 ]
 
 { #category : #tests }
@@ -1057,7 +1117,7 @@ FileReferenceTest >> testUnequalContent [
 	| a b |
 	a := filesystem * 'plonk'.
 	b := filesystem * 'griffle'.
-	self deny: a = b.
+	self deny: a equals: b
 ]
 
 { #category : #tests }
@@ -1065,7 +1125,7 @@ FileReferenceTest >> testUnequalSize [
 	| a b |
 	a := filesystem * 'plonk'.
 	b := filesystem / 'plonk' / 'griffle'.
-	self deny: a = b.
+	self deny: a equals: b
 ]
 
 { #category : #tests }
@@ -1152,7 +1212,7 @@ FileReferenceTest >> testWithExtentionReplacesExtension [
 	ref := filesystem * 'plonk.griffle'.
 	result := ref withExtension: 'nurp'.
 	self assert: result isRelative.
-	self assert: result basename = 'plonk.nurp'
+	self assert: result basename equals: 'plonk.nurp'
 ]
 
 { #category : #tests }
@@ -1183,13 +1243,9 @@ FileReferenceTest >> testWriteStream [
 
 { #category : #tests }
 FileReferenceTest >> testWriteStreamDo [
-	| ref s |
+	| ref |
 	ref := filesystem / 'plonk'.
-	[ ref
-		writeStreamDo: [ :stream | 
-			s := stream.
-			self deny: stream isNil ] ]
-		ensure: [ ref ensureDelete ]
+	[ ref writeStreamDo: [ :stream | self deny: stream isNil ] ] ensure: [ ref ensureDelete ]
 ]
 
 { #category : #tests }
@@ -1204,14 +1260,9 @@ FileReferenceTest >> testWriteStreamDoExists [
 
 { #category : #tests }
 FileReferenceTest >> testWriteStreamDoifPresent [
-	| ref s |
+	| ref |
 	ref := filesystem / 'plonk'.
-	[ ref
-		writeStreamDo: [ :stream | 
-			s := stream.
-			self deny: stream isNil ]
-		ifPresent: [ self signalFailure: 'The file does not exist!' ] ]
-		ensure: [ ref ensureDelete ]
+	[ ref writeStreamDo: [ :stream | self deny: stream isNil ] ifPresent: [ self signalFailure: 'The file does not exist!' ] ] ensure: [ ref ensureDelete ]
 ]
 
 { #category : #tests }

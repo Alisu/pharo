@@ -1,5 +1,5 @@
 "
-An ExternalAddress is an opaque handle to objects outside Smalltalk memory (e.g., a pointer).
+An ExternalAddress is an opaque handle to objects outside Pharo memory (e.g., a pointer).
 "
 Class {
 	#name : #ExternalAddress,
@@ -13,9 +13,16 @@ Class {
 
 { #category : #'instance creation' }
 ExternalAddress class >> allocate: byteSize [
-	"Primitive. Allocate an object on the external heap."
-	<primitive:'primitiveFFIAllocate' module:'SqueakFFIPrims'>
-	^self primitiveFailed
+	
+	^ FFIBackend current allocate: byteSize
+]
+
+{ #category : #'instance creation' }
+ExternalAddress class >> allocate: byteSize bytesDuring: aBlock [
+
+	| address |
+	address := self allocate: byteSize.
+	^ [ aBlock value: address ] ensure: [ address free ]
 ]
 
 { #category : #'instance creation' }
@@ -30,27 +37,22 @@ ExternalAddress class >> gcallocate: byteSize [
 	^externalAddress
 ]
 
-{ #category : #'class initialization' }
-ExternalAddress class >> initialize [
-	wordSize := Smalltalk wordSize
-]
-
 { #category : #'instance creation' }
 ExternalAddress class >> loadSymbol: moduleSymbol module: module [ 
-	<primitive: 'primitiveLoadSymbolFromModule' module: 'SqueakFFIPrims'>
-	^ self primitiveFailed
+
+	^ FFIBackend current loadSymbol: moduleSymbol module: module 
 ]
 
 { #category : #'instance creation' }
 ExternalAddress class >> new [
 	"External addresses are either four or eight bytes long."
-	^super new: wordSize
+	^super new: self wordSize
 ]
 
 { #category : #'instance creation' }
 ExternalAddress class >> new: n [
 	"Only create ExternalAddresses of the right size."
-	^n = wordSize
+	^n = self wordSize
 		ifTrue: [super new: n]
 		ifFalse: [self shouldNotImplement]
 ]
@@ -60,20 +62,13 @@ ExternalAddress class >> startUp: resuming [
 	"If starting the image afresh all external addresses should be zero.
 	 In addition, if the word size has changed then external addresses shoiuld be resized.
 	 The two steps are combined for efficiency."
-	resuming ifTrue:
-		[| instances |
-		 instances := self allInstances.
-		 wordSize ~= Smalltalk wordSize
-			ifTrue: "Implement nulling by becomming all existing instances to new (and hence null) pointers of the right size."
-				[wordSize := Smalltalk wordSize.
-				 instances elementsForwardIdentityTo: (instances collect: [:ea| self basicNew: wordSize])]
-			ifFalse:
-				[instances do: [:addr| addr beNull]]]
+	resuming ifTrue: [
+		self allInstancesDo: [ :each | each beNull ]]
 ]
 
 { #category : #accessing }
 ExternalAddress class >> wordSize [
-	^wordSize
+	^wordSize ifNil: [ wordSize := Smalltalk wordSize ]
 ]
 
 { #category : #arithmetic }
@@ -91,6 +86,17 @@ ExternalAddress >> + offset [
 		ifFalse: [bytes unsignedLongLongAt: 1 put: (bytes unsignedLongLongAt: 1) + offset].
 	"Convert bytes -> xaddr"
 	^bytes asExternalPointer
+]
+
+{ #category : #comparing }
+ExternalAddress >> = other [
+
+	self == other ifTrue: [ ^ true ].
+	self species == other species ifFalse: [ ^ false ].
+	1 to: self size do: [ :index | 
+		(self at: index) = (other at: index) ifFalse: [ ^ false ] ].
+	
+	^ true
 ]
 
 { #category : #private }
@@ -148,11 +154,8 @@ ExternalAddress >> finalize [
 
 { #category : #initialization }
 ExternalAddress >> free [
-	"Primitive. Free the object pointed to on the external heap.
-	Dangerous - may break your system if the receiver hasn't been
-	allocated by ExternalAddress class>>allocate:. No checks are done."
-	<primitive:'primitiveFFIFree' module:'SqueakFFIPrims'>
-	^self primitiveFailed
+
+	^ FFIBackend current free: self
 ]
 
 { #category : #converting }

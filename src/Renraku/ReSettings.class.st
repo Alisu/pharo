@@ -4,10 +4,6 @@ i have settings for QA recording functions
 Class {
 	#name : #ReSettings,
 	#superclass : #Object,
-	#instVars : [
-		'inspectorPlugin',
-		'spotterPlugin'
-	],
 	#classInstVars : [
 		'uniqueInstance'
 	],
@@ -17,31 +13,7 @@ Class {
 { #category : #cleanup }
 ReSettings class >> cleanUp [
 	
-	
 	uniqueInstance := nil
-]
-
-{ #category : #'settings-accessing' }
-ReSettings class >> inspectorPluggin [
-	
-	^ self uniqueInstance inspectorPluggin
-]
-
-{ #category : #'settings-accessing' }
-ReSettings class >> inspectorPluggin: aBoolean [ 
-	
-	self uniqueInstance inspectorPluggin: aBoolean
-]
-
-{ #category : #'settings-definition' }
-ReSettings class >> inspectorPlugginSettingsOn: aBuilder [
-	<systemsettings>
-	(aBuilder setting: #inspectorPluggin)
-		order: 5; 
-		target: self;
-		label: 'Inspector Plugin';
-		description: 'Enable GTInspector plugin which shows a tab with number of critiques and allows to inspect them.';
-		parent: #qualityAssistant.
 ]
 
 { #category : #'settings-definition' }
@@ -87,38 +59,9 @@ ReSettings class >> showErrorsSettingsOn: aBuilder [
 	(aBuilder setting: #showErrors)
 		target: self;
 		order: 5;
+		default: false;
 		label: 'Show errors (dev. only!)';
 		description: 'Signal errors that happen during critique-checking (and related). This should be used by developers.';
-		parent: #qualityAssistant.
-]
-
-{ #category : #properties }
-ReSettings class >> spotterExtMethods [
-	^ GTSpotter spotterExtendingMethods select: [ :m |
-		m compiledMethod package = #Renraku asPackage ]
-]
-
-{ #category : #'settings-accessing' }
-ReSettings class >> spotterPlugin [
-	
-	^ self uniqueInstance spotterPlugin
-]
-
-{ #category : #'settings-accessing' }
-ReSettings class >> spotterPlugin: aBoolean [
-	
-	^ self uniqueInstance spotterPlugin: aBoolean
-]
-
-{ #category : #'settings-definition' }
-ReSettings class >> spotterPluginSettingsOn: aBuilder [
-	<systemsettings>
-	(aBuilder setting: #spotterPlugin)
-		order: 5;
-		target: self;
-		label: 'Spotter Plugin';
-		description: 'Enable GTSpotter plugin which shows a group with critiques and allows to preview them.';
-		default: false;
 		parent: #qualityAssistant.
 ]
 
@@ -126,39 +69,4 @@ ReSettings class >> spotterPluginSettingsOn: aBuilder [
 ReSettings class >> uniqueInstance [
 	
 	^ uniqueInstance ifNil: [ uniqueInstance := self new ]
-]
-
-{ #category : #initialization }
-ReSettings >> initialize [
-	super initialize.
-	
-	inspectorPlugin := false.
-	spotterPlugin := false
-]
-
-{ #category : #accessing }
-ReSettings >> inspectorPluggin [
-	
-
-	^ inspectorPlugin
-]
-
-{ #category : #accessing }
-ReSettings >> inspectorPluggin: aBool [ 
-	
-	inspectorPlugin := aBool
-]
-
-{ #category : #accessing }
-ReSettings >> spotterPlugin [
-	
-	^ spotterPlugin
-
-]
-
-{ #category : #accessing }
-ReSettings >> spotterPlugin: aBool [ 
-	
-	spotterPlugin := aBool
-
 ]

@@ -16,15 +16,15 @@ Class {
 		'refreshButton',
 		'selectDirectoryButton',
 		'hiedraCheckBox',
-		'logNodesTree'
+		'logNodesTable'
 	],
 	#category : #'EpiceaBrowsers-UI-Graph'
 }
 
-{ #category : #accessing }
+{ #category : #specs }
 EpLogNodeGraphPresenter class >> defaultSpec [
 	^ SpBoxLayout newVertical
-		add: #logNodesTree;
+		add: #logNodesTable;
 		add:
 			(SpBoxLayout newHorizontal
 					add: #hiedraCheckBox;
@@ -79,16 +79,18 @@ EpLogNodeGraphPresenter >> initializeHiedraController [
 	hiedraColumnController renderer
 		rowHeight: self rowHeight;
 		cellWidth: self rowHeight // 3;
-		arrowSize: 2.0;
-		nodeConnectionOffset: 2.5
+		arrowSize: 1.0;
+		nodeConnectionOffset: 2.5.
 
+	hiedraColumnController renderer rowHeight: FTTableMorph defaultRowHeight floor.
 ]
 
 { #category : #initialization }
-EpLogNodeGraphPresenter >> initializeLogNodesTree [
+EpLogNodeGraphPresenter >> initializeLogNodesTable [
 	self initializeHiedraController.
 
-	logNodesTree
+	logNodesTable
+		beMultipleSelection;
 		addColumn:
 			((SpImageTableColumn evaluated: [ :item | hiedraColumnController cellMorphAtValue: item ])
 				width: 50;
@@ -125,12 +127,12 @@ EpLogNodeGraphPresenter >> initializeSelectedDirectoryButton [
 EpLogNodeGraphPresenter >> initializeWidgets [
 	hiedraCheckBox := self newCheckBox.
 	selectDirectoryButton := self newButton.
-	logNodesTree := self newTreeTable.
+	logNodesTable := self newTable.
 	refreshButton := self newButton.
 	openSettingsButton := self newButton.
 
 	self initializeSelectedDirectoryButton.
-	self initializeLogNodesTree.
+	self initializeLogNodesTable.
 	self initializeRefreshButton.
 	self initializeHiedraCheckBox.
 	self initializeOpenSettingsButton
@@ -180,17 +182,11 @@ EpLogNodeGraphPresenter >> refreshLogNodesTreePresenter [
 
 	hiedraColumnController ruler: (HiRulerBuilder newRulerValues: nodes linksBlock: [ :node | node referencedNodes asArray ]).
 	hiedraColumnController reset.
-	logNodesTree roots: nodes
+	logNodesTable items: nodes
 ]
 
 { #category : #accessing }
 EpLogNodeGraphPresenter >> rowHeight [
-
-	^ 23
-]
-
-{ #category : #accessing }
-EpLogNodeGraphPresenter >> rowSize [
 
 	^ 23
 ]
@@ -202,11 +198,11 @@ EpLogNodeGraphPresenter >> selectDirectory [
 ]
 
 { #category : #accessing }
-EpLogNodeGraphPresenter >> selectedLogNode [
-	^ logNodesTree selectedItem
+EpLogNodeGraphPresenter >> selectedLogNodes [
+	^ logNodesTable selection selectedItems
 ]
 
 { #category : #'api-events' }
 EpLogNodeGraphPresenter >> whenSelectionChangedDo: aBlock [
-	logNodesTree whenSelectionChangedDo: aBlock
+	logNodesTable whenSelectionChangedDo: aBlock
 ]

@@ -61,8 +61,7 @@ DelayBenchmark >> bench [
 					'EnterCount: ' , (EnterCount // sampleSetSeeds size) printString
 						, String space.
 			self
-				trace: 'ExitCount: ' , (ExitCount // sampleSetSeeds size) printString.
-			self currentWorld doOneCycle	"since we are a higher priority would prevent transcript showing" ].
+				trace: 'ExitCount: ' , (ExitCount // sampleSetSeeds size) printString ].
 	completed signal ] forkAt: Processor userSchedulingPriority + 2.	"To avoid UI loop influencing result"
 	completed wait
 ]
@@ -88,7 +87,7 @@ DelayBenchmark >> generateDelayProcesses: numberConcurrent priority: priority ma
 	sampleDurations := Array new: 1000.  
 	1 to: sampleDurations size do:
 	[  	:index | 
-		sampleDurations at: index put: (randomGenerator nextInt: maxDuration).
+		sampleDurations at: index put: (randomGenerator nextInteger: maxDuration).
 	].
 	sampleIndex := 0.
 

@@ -1,8 +1,27 @@
+"
+I am the adapter used to realise a SpTablePresenter.
+I will create a tree table (using FTTableMorph), using the columns TableColumn* as definitions.
+
+Is important notice here that most of the row/cell creation happens on SpMorphicTableDataSource. Check there for some implementation details.
+"
 Class {
 	#name : #SpMorphicTableAdapter,
 	#superclass : #SpAbstractMorphicListAdapter,
 	#category : #'Spec2-Adapters-Morphic-Table'
 }
+
+{ #category : #accessing }
+SpMorphicTableAdapter class >> intercellSpacing [
+
+	^ 2@0
+]
+
+{ #category : #initialization }
+SpMorphicTableAdapter >> addKeyBindingsTo: aWidget [
+
+	super addKeyBindingsTo: aWidget.
+	self addContextMenuKeyBindings: aWidget
+]
 
 { #category : #factory }
 SpMorphicTableAdapter >> addModelTo: tableMorph [
@@ -23,7 +42,7 @@ SpMorphicTableAdapter >> addModelTo: tableMorph [
 	self presenter whenShowColumnHeadersChangedDo: [ :showColumns |
 		self refreshShowColumnHeaders ].
 
-	self presenter whenModelChangedDo: [ widget refresh ].
+	self presenter whenModelChangedDo: [ self refreshModel ].
 	self presenter whenColumnsChangedDo: [ self refreshColumnsInWidget ].
 	
 	tableMorph setBalloonText: self help.
@@ -38,7 +57,13 @@ SpMorphicTableAdapter >> addModelTo: tableMorph [
 			send: #strongSelectionChanged:
 			to: self.
 
-	tableMorph dataSource: self newDataSource
+	tableMorph dataSource: self newDataSource.
+	
+	self presenter whenItemFilterBlockChangedDo: [ :block | 
+		self updateItemFilterBlockWith: block ].
+	self presenter whenSearchEnabledChangedDo: [ 
+		self updateSearch ].
+	self updateItemFilterBlockWith: self itemFilter
 ]
 
 { #category : #factory }
@@ -47,11 +72,17 @@ SpMorphicTableAdapter >> buildWidget [
 	widget := FTTableMorph new
 		hResizing: #spaceFill;
 		vResizing: #spaceFill;
+		intercellSpacing: self class intercellSpacing;
 		yourself.
 
 	self addModelTo: widget.
 
 	^ widget
+]
+
+{ #category : #emulating }
+SpMorphicTableAdapter >> clickOnColumnHeaderAt: anIndex [
+	self widgetDo: [ :tableWidget | tableWidget clickOnColumnHeaderAt: anIndex ]
 ]
 
 { #category : #testing }
@@ -69,6 +100,18 @@ SpMorphicTableAdapter >> defaultColumn [
 SpMorphicTableAdapter >> ensureAtLeastOneColumnIn: tableMorph [
 	self model columns ifNotEmpty: [ ^ self ].
 	tableMorph addColumn: (self newColumnFrom: self defaultColumn)
+]
+
+{ #category : #private }
+SpMorphicTableAdapter >> ifSorted: sortedBlock ifNotSorted: notSortedBlock [ 
+	widget columns 
+		do: [ :column | | state | 
+			column isSorted
+				ifTrue: [ 
+					state := column sortingStrategy state.
+					state isSorted
+						ifTrue: [ ^ sortedBlock cull: state ] ] ].
+	^ notSortedBlock value
 ]
 
 { #category : #testing }
@@ -119,10 +162,19 @@ SpMorphicTableAdapter >> refreshColumnsInWidget [
 	self ensureAtLeastOneColumnIn: widget.
 ]
 
-{ #category : #updating }
+{ #category : #refreshing }
 SpMorphicTableAdapter >> refreshList [
 
 	^ self widget refresh
+]
+
+{ #category : #refreshing }
+SpMorphicTableAdapter >> refreshModel [
+
+	widget dataSource resetElements.
+	self
+		ifSorted: [ :sortingStrategyState | sortingStrategyState executeSortingOn: widget dataSource ]
+		ifNotSorted: [ self refreshList ]
 ]
 
 { #category : #factory }
@@ -148,7 +200,7 @@ SpMorphicTableAdapter >> refreshWidgetSelection [
 	rowIndexes isEmpty
 		ifTrue: [ self widget basicSelectIndexes: #() ]
 		ifFalse: [ self widget basicSelectIndexes: rowIndexes ].
-	^ self widget refresh
+	^ self refreshList
 ]
 
 { #category : #emulating }

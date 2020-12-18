@@ -7,25 +7,12 @@ Basically, I add:
 "
 Class {
 	#name : #SpCommandGroup,
-	#superclass : #CmCommandGroupDecorator,
+	#superclass : #CmUICommandGroup,
 	#instVars : [
-		'displayStrategy',
-		'isRoot',
-		'icon'
+		'toolbarPopoverButton'
 	],
 	#category : #'Spec2-Commander2-Core'
 }
-
-{ #category : #default }
-SpCommandGroup class >> defaultDisplayStrategy [
-
-	^ SpDisplayAsSubMenu new
-]
-
-{ #category : #default }
-SpCommandGroup class >> defaultIconName [
-	^ #blank
-]
 
 { #category : #converting }
 SpCommandGroup >> asKMCategory [
@@ -55,6 +42,7 @@ SpCommandGroup >> asMenuBarPresenterWith: aBlock [
 
 { #category : #converting }
 SpCommandGroup >> asMenuPresenter [
+
 	^ SpMenuPresenterBuilder new
 		visit: self;
 		menuPresenter
@@ -73,7 +61,7 @@ SpCommandGroup >> asMenuPresenterWith: aBlock [
 
 { #category : #converting }
 SpCommandGroup >> asToolbarPresenter [
-	^ SpToolBarPresenterBuilder new
+	^ SpToolbarPresenterBuilder new
 		visit: self;
 		toolbarPresenter
 ]
@@ -82,7 +70,7 @@ SpCommandGroup >> asToolbarPresenter [
 SpCommandGroup >> asToolbarPresenterWith: aBlock [
 	| builder |
 	
-	builder := SpToolBarPresenterBuilder new.
+	builder := SpToolbarPresenterBuilder new.
 	aBlock value: builder toolbarPresenter.
 	^ builder
 		visit: self;
@@ -90,18 +78,15 @@ SpCommandGroup >> asToolbarPresenterWith: aBlock [
 ]
 
 { #category : #configuring }
-SpCommandGroup >> beDisplayedAsGroup [
-	self displayStrategy: SpDisplayAsGroup new
+SpCommandGroup >> beToolbarGroup [
+
+	toolbarPopoverButton := false
 ]
 
 { #category : #configuring }
-SpCommandGroup >> beDisplayedAsSubMenu [
-	self displayStrategy: SpDisplayAsSubMenu new
-]
+SpCommandGroup >> beToolbarPopoverButton [
 
-{ #category : #configuring }
-SpCommandGroup >> beRoot [
-	self isRoot: true.
+	toolbarPopoverButton := true
 ]
 
 { #category : #displaying }
@@ -113,41 +98,11 @@ SpCommandGroup >> displayIn: aMenuPresenter do: aBlock [
 		do: aBlock
 ]
 
-{ #category : #accessing }
-SpCommandGroup >> displayStrategy [
-	^ displayStrategy
-]
-
-{ #category : #accessing }
-SpCommandGroup >> displayStrategy: anObject [
-	displayStrategy := anObject
-]
-
-{ #category : #accessing }
-SpCommandGroup >> icon [ 
-
-	^ icon
-]
-
-{ #category : #accessing }
-SpCommandGroup >> icon: anIcon [
-
-	icon := anIcon
-]
-
-{ #category : #accessing }
-SpCommandGroup >> iconName: aSymbol [
-
-
-	self icon: (self iconNamed: aSymbol)
-]
-
 { #category : #initialization }
 SpCommandGroup >> initialize [
 
 	super initialize.
-	self displayStrategy: self class defaultDisplayStrategy.
-	self isRoot: false
+	toolbarPopoverButton := false
 ]
 
 { #category : #'shortcuts installation' }
@@ -157,12 +112,8 @@ SpCommandGroup >> installShortcutsIn: aPresenter [
 		visit: self
 ]
 
-{ #category : #accessing }
-SpCommandGroup >> isRoot [
-	^ isRoot
-]
+{ #category : #testing }
+SpCommandGroup >> isToolbarPopoverButton [
 
-{ #category : #accessing }
-SpCommandGroup >> isRoot: anObject [
-	isRoot := anObject
+	^ toolbarPopoverButton
 ]

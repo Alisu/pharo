@@ -43,6 +43,14 @@ OSSDL2Driver class >> isVMDisplayUsingSDL2 [
 	^ false
 ]
 
+{ #category : #events }
+OSSDL2Driver >> afterSetWindowTitle: windowTitle onWindow: osWindow [
+	
+	OSPlatform current sdlPlatform 
+		afterSetWindowTitle: windowTitle onWindow: osWindow.	
+
+]
+
 { #category : #private }
 OSSDL2Driver >> closeRemovedController: index [
 	"TODO: What should I do here?"
@@ -76,7 +84,7 @@ OSSDL2Driver >> convertEvent: sdlEvent [
 
 { #category : #'window creation and deletion' }
 OSSDL2Driver >> createWindowWithAttributes: attributes osWindow: osWindow [
-	| flags handle window glAttributes x y |
+	| flags handle aBackendWindow glAttributes x y |
 	
 	flags := attributes visible ifTrue: [ SDL_WINDOW_SHOWN ] ifFalse: [ SDL_WINDOW_HIDDEN ].
 	attributes fullscreen ifTrue: [ flags := flags | SDL_WINDOW_FULLSCREEN_DESKTOP ].
@@ -115,14 +123,14 @@ OSSDL2Driver >> createWindowWithAttributes: attributes osWindow: osWindow [
 			height: attributes height 
 			flags: flags.
 		
-		window := OSSDL2WindowHandle newWithHandle: handle attributes: attributes.
-		window osWindow: osWindow.
-		self registerWindow: window.
+		aBackendWindow := OSSDL2BackendWindow newWithHandle: handle attributes: attributes.
+		aBackendWindow osWindow: osWindow.
+		self registerWindow: aBackendWindow.
 		
 		"The OSWindow handle has to be set inside of this critical section to avoid losing some events such as expose."
-		osWindow setJustCreatedHandle: window.
+		osWindow setJustCreatedHandle: aBackendWindow.
 	].
-	^ window
+	^ aBackendWindow
 ]
 
 { #category : #'events-processing' }
@@ -131,7 +139,9 @@ OSSDL2Driver >> evaluateUserInterrupt: anSDLEvent [
 	anSDLEvent ifNil: [ ^ self ].
 
 	((anSDLEvent isKindOf: SDL_KeyDownEvent)
-		and: [ (anSDLEvent keysym mod anyMask: 1344) and: [ anSDLEvent keysym scancode = 55 ] ])
+		and: [ ((anSDLEvent keysym mod bitAnd: 16r200) = 0) "ignore all if AltGr is pressed" 
+		and: [(anSDLEvent keysym mod anyMask: 1344) 
+		and: [ anSDLEvent keysym scancode = 55 ] ]])
 		ifTrue: [ UserInterruptHandler new handleUserInterrupt ]
 ]
 
@@ -282,8 +292,8 @@ OSSDL2Driver >> registerGlobalListener: globalListener [
 ]
 
 { #category : #'window creation and deletion' }
-OSSDL2Driver >> registerWindow: window [
-	WindowMap at: window handle windowID put: window
+OSSDL2Driver >> registerWindow: aBackendWindow [
+	WindowMap at: aBackendWindow sdl2Window windowID put: aBackendWindow
 ]
 
 { #category : #'global events' }
@@ -292,7 +302,7 @@ OSSDL2Driver >> sendEventWithoutWindow: event [
 	converted := event accept: self.
 	converted ifNil: [ ^ self ].
 	globalListeners do: [ :list | list handleEvent: converted ].
-	self flag: 'TODO: Avoid holding the mutex for so long'.	
+	self flag: #pharoFixMe. "Avoid holding the mutex for so long".	
 	WindowMapMutex critical: [
 		WindowMap valuesDo: [ :window | window deliverGlobalEvent: converted ].
 	]
@@ -300,11 +310,21 @@ OSSDL2Driver >> sendEventWithoutWindow: event [
 
 { #category : #'window creation and deletion' }
 OSSDL2Driver >> setGLAttributes: glAttributes [
-"	SDL2 glSetAttribute: SDL_GL_CONTEXT_MAJOR_VERSION value: glAttributes majorVersion.
-	SDL2 glSetAttribute: SDL_GL_CONTEXT_MINOR_VERSION value: glAttributes minorVersion.
-	SDL2 glSetAttribute: SDL_GL_CONTEXT_PROFILE_MASK value: glAttributes profileType.
-"
-
+	glAttributes majorVersion ifNotNil: [ 
+		SDL2 glSetAttribute: SDL_GL_CONTEXT_MAJOR_VERSION value: glAttributes majorVersion.
+	].
+	glAttributes minorVersion ifNotNil: [ 
+		SDL2 glSetAttribute: SDL_GL_CONTEXT_MINOR_VERSION value: glAttributes minorVersion.
+	].
+	glAttributes hasCompatibilityProfile ifTrue: [ 
+		SDL2 glSetAttribute: SDL_GL_CONTEXT_PROFILE_MASK value: SDL_GL_CONTEXT_PROFILE_COMPATIBILITY
+	].
+	glAttributes hasCoreProfile ifTrue: [ 
+		SDL2 glSetAttribute: SDL_GL_CONTEXT_PROFILE_MASK value: SDL_GL_CONTEXT_PROFILE_CORE
+	].
+	glAttributes hasESProfile ifTrue: [ 
+		SDL2 glSetAttribute: SDL_GL_CONTEXT_PROFILE_MASK value: SDL_GL_CONTEXT_PROFILE_ES
+	].
 
 	SDL2 glSetAttribute: SDL_GL_RED_SIZE value: glAttributes redSize.
 	SDL2 glSetAttribute: SDL_GL_BLUE_SIZE value: glAttributes blueSize.
@@ -313,8 +333,7 @@ OSSDL2Driver >> setGLAttributes: glAttributes [
 	SDL2 glSetAttribute: SDL_GL_DEPTH_SIZE value: glAttributes depthSize.
 	SDL2 glSetAttribute: SDL_GL_STENCIL_SIZE value: glAttributes stencilSize.
 	SDL2 glSetAttribute: SDL_GL_DOUBLEBUFFER value: glAttributes doubleBuffer.
-
-	
+	SDL2 glSetAttribute: SDL_GL_FRAMEBUFFER_SRGB_CAPABLE value: glAttributes srgbFramebuffer asBit.
 ]
 
 { #category : #'events-processing' }
@@ -434,9 +453,19 @@ OSSDL2Driver >> visitControllerDeviceRemovedEvent: controllerEvent [
 
 { #category : #'global events' }
 OSSDL2Driver >> visitDropEvent: dropEvent [
+
+	"The dragged file name comes as a C-string of utf8 encoded bytes.
+	Get the string, and decode it to a string using a utf8 decoder"
+	| fileName |
+	fileName := dropEvent file readString asByteArray utf8Decoded.
+	
+	"Free the file handle after it has been read, as specified by SDL2
+	https://wiki.libsdl.org/SDL_DropEvent"
+	dropEvent file free.
+	
 	^ OSWindowDropEvent new
 		timestamp: dropEvent timestamp;
-		filePath: dropEvent file readString
+		filePath: fileName
 ]
 
 { #category : #'events-processing' }

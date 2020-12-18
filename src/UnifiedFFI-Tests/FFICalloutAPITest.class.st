@@ -4,6 +4,11 @@ Tests for FFICalloutAPI
 Class {
 	#name : #FFICalloutAPITest,
 	#superclass : #TestCase,
+	#instVars : [
+		'senderCtx',
+		'uffiCtx',
+		'lastUffiCtx'
+	],
 	#category : #'UnifiedFFI-Tests-Tests'
 }
 
@@ -14,7 +19,7 @@ FFICalloutAPITest >> ffiCalloutClass [
 
 { #category : #'primitives atomic' }
 FFICalloutAPITest >> ffiCopyString: aString to: dest [
-	^ self ffiCall: #( String strcpy ( String dest, String aString ) )
+	^ self ffiCall: #( String strcpy ( void* dest, String aString ) )
 ]
 
 { #category : #'primitives atomic' }
@@ -44,7 +49,7 @@ FFICalloutAPITest >> ffiLongLongAbs: number [
 
 { #category : #'primitives constant' }
 FFICalloutAPITest >> ffiTestConstantFormat: format to: buffer [
-	^ self ffiCall: #( int sprintf ( ByteArray buffer, String format, 65, 65, true ) )
+	^ self ffiCall: #( int sprintf ( ByteArray buffer, String format, 65, 65, 1 ) )
 ]
 
 { #category : #'primitives constant' }
@@ -80,7 +85,7 @@ FFICalloutAPITest >> method2 [
 { #category : #'primitives pointer' }
 FFICalloutAPITest >> primFromByteArray: src toExternalAddress: dest size: n [
 	^ self 
-		ffiCall: #( void *memcpy(ExternalAddress dest, ByteArray src, size_t n) )
+		ffiCall: #( void *memcpy(void* dest, ByteArray src, size_t n) )
 		module: LibC
 ]
 
@@ -107,14 +112,33 @@ FFICalloutAPITest >> resetFFIMethods [
 ]
 
 { #category : #running }
-FFICalloutAPITest >> runCase [ 
-	| oldAPIClass |
+FFICalloutAPITest >> setUp [
+
+	super setUp.
+	self resetFFIMethods.
+	senderCtx := Context
+		sender: nil
+		receiver: nil
+		method: Object>>#yourself
+		arguments: #().
 	
-	"Ensure I use this class for running the tests"
-	oldAPIClass := FFICalloutAPI calloutAPIClass.
-	[ FFICalloutAPI calloutAPIClass: FFICalloutAPI. 
-	  super runCase ]
-	ensure: [ FFICalloutAPI calloutAPIClass: oldAPIClass ]
+	uffiCtx := Context
+		sender: senderCtx
+		receiver: nil
+		method: Object>>#ffiCall:
+		arguments: #(1).
+		
+	lastUffiCtx := Context
+		sender: uffiCtx
+		receiver: nil
+		method: Object>>#ffiCall:options:
+		arguments: #(1 2).
+]
+
+{ #category : #running }
+FFICalloutAPITest >> tearDown [
+	FFICallbackFunctionResolution reset.
+	super tearDown.
 ]
 
 { #category : #'tests pointer' }
@@ -123,7 +147,7 @@ FFICalloutAPITest >> testByteArrayToExternalAddress [
 	
 
 	result := self 
-		primFromByteArray: 'Hello, World' asByteArray  
+		primFromByteArray: ('Hello, World' asByteArray pinInMemory; yourself) 
 		toExternalAddress: (dest := ExternalAddress allocate: 12) autoRelease 
 		size: 12.
 		
@@ -141,7 +165,9 @@ FFICalloutAPITest >> testCallWithAllConstParameter [
 	"
 	| result buffer |
 
-	buffer := ByteArray new: 100. 
+	buffer := (ByteArray new: 100)
+		pinInMemory;
+		yourself. 
 	result := self ffiTestConstantFormat: '%d, %d and %d' to: buffer.
 	self assert: result equals: 12.
 	self assert: (buffer first: result) asString equals: '65, 65 and 1'
@@ -157,7 +183,9 @@ FFICalloutAPITest >> testCallWithConstParameter [
 	"
 	| result buffer |
 
-	buffer := ByteArray new: 100. 
+	buffer := (ByteArray new: 100)
+		pinInMemory; yourself.
+	
 	result := self ffiTestContantFormat: '%d, %d and %d' value: true to: buffer.
 	self assert: result equals: 12.
 	self assert: (buffer first: result) asString equals: '65, 65 and 1'
@@ -244,9 +272,10 @@ FFICalloutAPITest >> testCharCall [
 { #category : #'tests pointer' }
 FFICalloutAPITest >> testCharPointer [
 	| result |
+		
 	result := self 
-		primStr: ('Hello, ' asByteArray copyWith: 0) 
-		cat: ('World' asByteArray copyWith: 0).
+		primStr:  'Hello, '
+		cat: 'World'.
 				
 	self assert: result equals: 'Hello, World'.
 ]
@@ -254,17 +283,20 @@ FFICalloutAPITest >> testCharPointer [
 { #category : #'tests atomic' }
 FFICalloutAPITest >> testDoubleCall [
 	"Test using generic FFI spec"
+
 	| callback result |
+	
+	(FFIBackend current isKindOf: OldFFIBackend) 
+		ifFalse: [ 
+			"Registering callbacks like functions is from the old backend"
+			^ self skip ].
 	
 	callback := FFICallback 
 		signature: #(double (double x)) 
 		block: [ :x | x abs ].
 	FFICallbackFunctionResolution registerCallback: callback as: #DoubleAbsolute.
-	
+		
 	result := self ffiDoubleAbs: 65.
-	self assert: result equals: 65.0.
-	
-	result := self ffiDoubleAbs: 65.0.
 	self assert: result equals: 65.0.
 
 	result := self ffiDoubleAbs: $A.
@@ -279,7 +311,12 @@ FFICalloutAPITest >> testDoubleCall [
 FFICalloutAPITest >> testFloatCall [
 	"Test using generic FFI spec"
 	| callback result |
-	
+
+	(FFIBackend current isKindOf: OldFFIBackend) 
+		ifFalse: [ 
+			"Registering callbacks like functions is from the old backend"
+			^ self skip ].
+
 	callback := FFICallback 
 		signature: #(float (float x)) 
 		block: [ :x | x abs ].
@@ -361,10 +398,29 @@ FFICalloutAPITest >> testPrintString [
 	"Test using generic FFI spec"
 	| result buffer |
 	
-	buffer := ByteArray new: 12.
+	buffer := (ByteArray new: 12)
+			pinInMemory;
+			yourself.
 	result := self ffiCopyString: 'Hello World!' to: buffer.
 	self assert: result equals: 'Hello World!'.
 	self assert: buffer asString equals: 'Hello World!'
+]
+
+{ #category : #'tests context' }
+FFICalloutAPITest >> testSenderLookupsMethodInSenderChain [
+	| api |
+	
+	api := FFICalloutAPI inUFFIContext: uffiCtx.
+	self assert: api senderContext equals: senderCtx
+]
+
+{ #category : #'tests context' }
+FFICalloutAPITest >> testSenderLookupsMethodInSenderChainWithManyUFFIMethods [
+	| api |
+	
+	api := FFICalloutAPI inUFFIContext: lastUffiCtx.
+
+	self assert: api senderContext equals: senderCtx
 ]
 
 { #category : #'tests pointer' }
@@ -378,4 +434,34 @@ FFICalloutAPITest >> testVoidPointer [
 		
 	self deny: result isNull.	
 	self assert: dest asString equals: 'Hello, World'
+]
+
+{ #category : #'tests context' }
+FFICalloutAPITest >> testuFFIMethodSelectorInNonMarkedContextDoesNotFindAMethodEnterSelector [
+	| api selector |
+	
+	api := FFICalloutAPI inUFFIContext: senderCtx.
+	selector := api uFFIEnterMethodSelector.
+
+	self assert: selector equals: nil
+]
+
+{ #category : #'tests context' }
+FFICalloutAPITest >> testuFFIMethodSelectorLookupsFirstMethodInSenderChain [
+	| api selector |
+	
+	api := FFICalloutAPI inUFFIContext: lastUffiCtx.
+	selector := api uFFIEnterMethodSelector.
+
+	self assert: selector equals: uffiCtx method selector
+]
+
+{ #category : #'tests context' }
+FFICalloutAPITest >> testuFFIMethodSelectorLookupsMethodInSenderChain [
+	| api selector |
+	
+	api := FFICalloutAPI inUFFIContext: uffiCtx.
+	selector := api uFFIEnterMethodSelector.
+
+	self assert: selector equals: uffiCtx method selector
 ]

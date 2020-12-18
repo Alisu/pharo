@@ -4,8 +4,13 @@ I model an abstract type of result for the run of a test case.
 Class {
 	#name : #DTTestResultType,
 	#superclass : #Object,
-	#category : #'DrTests-TestsRunner'
+	#category : #'DrTests-TestsRunner-Results'
 }
+
+{ #category : #factory }
+DTTestResultType class >> backgroundColor [
+	^ self subclassResponsibility
+]
 
 { #category : #factory }
 DTTestResultType class >> error [
@@ -25,6 +30,11 @@ DTTestResultType class >> pass [
 { #category : #factory }
 DTTestResultType class >> skipped [
 	^ DTSkipped new
+]
+
+{ #category : #factory }
+DTTestResultType class >> textColor [
+	^ TestResult defaultColorText
 ]
 
 { #category : #testing }

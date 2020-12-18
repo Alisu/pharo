@@ -65,17 +65,18 @@ LibC >> currentProcessId [
 LibC >> fgetc: stream [
 	"Get character from stream."
 	 
-	 ^self ffiCall: #(int* fgetc(ExternalAddress* stream))
+	 ^self ffiCall: #(int* fgetc(void* stream))
 ]
 
 { #category : #'private - accessing' }
-LibC >> macModuleName [
+LibC >> macLibraryName [
 	^ 'libc.dylib'
 ]
 
 { #category : #'api - misc' }
 LibC >> memCopy: src to: dest size: n [
-	^ self ffiCall: #(void *memcpy(void *dest, const void *src, size_t n))
+	^ self
+		ffiCall: #(#void #* #memcpy #(#void #* #dest #, #const #void #* #src #, #size_t #n))
 ]
 
 { #category : #'api - processes' }
@@ -90,8 +91,8 @@ LibC >> pipe: command mode: mode [
 	"Initiate pipe streams to or from a process."
 
 	^self ffiCall: (Smalltalk os isWindows
-							ifTrue:  [ #(ExternalAddress* _popen(char* command, char* mode)) ]
-							ifFalse: [ #(ExternalAddress* popen(char* command, char* mode)) ])
+							ifTrue:  [ #(void* _popen(char* command, char* mode)) ]
+							ifFalse: [ #(void* popen(char* command, char* mode)) ])
 
 	
 			 
@@ -102,8 +103,8 @@ LibC >> pipeClose: stream [
 	"Close the given pipe stream."
 
 	^self ffiCall: (Smalltalk os isWindows
-							ifTrue: [ #(int* _pclose(ExternalAddress* stream)) ]
-							ifFalse: [ #(int* pclose(ExternalAddress* stream)) ])
+							ifTrue: [ #(int* _pclose(void* stream)) ]
+							ifFalse: [ #(int* pclose(void* stream)) ])
 ]
 
 { #category : #'process actions' }
@@ -130,12 +131,12 @@ LibC >> system: command [
 ]
 
 { #category : #'private - accessing' }
-LibC >> unixModuleName [
+LibC >> unixLibraryName [
 	^ 'libc.so.6'
 ]
 
 { #category : #'private - accessing' }
-LibC >> win32ModuleName [
+LibC >> win32LibraryName [
 	"While this is not a 'libc' properly, msvcrt has the functions we are defining here"
 	^ 'msvcrt.dll'
 ]

@@ -1,5 +1,5 @@
 "
-A DropListItem is an item (wrapper) designed to fit into a DropList
+A DropListItem is an item (wrapper) designed to fit into a DropList.
 "
 Class {
 	#name : #SpDropListItem,
@@ -53,7 +53,7 @@ SpDropListItem >> action: aBlock [
 
 { #category : #protocol }
 SpDropListItem >> display: aBlock [
-	"aBlock - 1 optional argument, which is the underlying item; returns the string to be displayed"
+	"aBlock - 1 optional argument, which is the underlying item; Returns the string to be displayed"
 
 	displayBlock := aBlock.
 ]
@@ -78,7 +78,6 @@ SpDropListItem >> icon: anObject [
 { #category : #initialization }
 SpDropListItem >> initialize [
 	super initialize.
-
 	action := [  ].
 	displayBlock := [ :e | e asString ]
 ]

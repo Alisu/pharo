@@ -3,7 +3,7 @@ I provide at least one test which corresponds to a message sent by InstructionSt
 "
 Class {
 	#name : #OCSourceCode2BytecodeTest,
-	#superclass : #TestCase,
+	#superclass : #AbstractEnvironmentTestCase,
 	#instVars : [
 		'instVar'
 	],
@@ -13,6 +13,13 @@ Class {
 	#category : #'OpalCompiler-Tests-Source'
 }
 
+{ #category : #accessing }
+OCSourceCode2BytecodeTest class >> classVar [
+
+	 ^ClassVar
+
+]
+
 { #category : #compiling }
 OCSourceCode2BytecodeTest >> compile2method: sourceStream [ 
 			"Compile code without logging the source in the changes file"
@@ -21,6 +28,12 @@ OCSourceCode2BytecodeTest >> compile2method: sourceStream [
 						class: self class;			
 						compile.
 		
+]
+
+{ #category : #accessing }
+OCSourceCode2BytecodeTest >> instVar [
+
+	^ instVar
 ]
 
 { #category : #tests }
@@ -555,7 +568,7 @@ OCSourceCode2BytecodeTest >> testPushReceiverVariableBytecode [
 	scanner := InstructionStream on: method.
 	self
 		assert: ((did := scanner peekInstruction) selector == #pushReceiverVariable:
-				and: [did arguments first == 2])
+				and: [did arguments first == 3])
 		description: 'Failed ' , selector
 ]
 
@@ -611,6 +624,9 @@ OCSourceCode2BytecodeTest >> testReturnReceiver [
 OCSourceCode2BytecodeTest >> testReturnTopFromBlock [
 	| selector method scanner |
 	
+	"Only Valid if we have inlined closures in the method"
+	CompilationContext optionFullBlockClosure ifTrue: [ ^ self skip ].
+	
 	selector := (method := self compile2method: 'returnTopFromBlock |ia| ^[ia]') selector.
 	scanner := InstructionStream on: method.
 	3 timesRepeat: [scanner nextInstruction].
@@ -659,7 +675,7 @@ OCSourceCode2BytecodeTest >> testStoreAndPopReceiverVariableBytecode [
 	scanner := InstructionStream on: method.
 	self
 		assert: ((did := scanner nextInstruction; peekInstruction) selector == #popIntoReceiverVariable:
-				and: [did arguments first == 2])
+				and: [did arguments first == 3])
 		description: 'Failed ' , selector
 ]
 
@@ -691,7 +707,7 @@ OCSourceCode2BytecodeTest >> testStoreIntoReceiverVariableBytecode [
 	scanner := InstructionStream on: method.
 	self
 		assert: ((did := scanner nextInstruction; peekInstruction) selector == #storeIntoReceiverVariable:
-				and: [did arguments first == 2])
+				and: [did arguments first == 3])
 		description: 'Failed ' , selector
 ]
 

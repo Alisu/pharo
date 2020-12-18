@@ -1,11 +1,18 @@
 "
-self example1
+I show examples of rendering in a AthensCairoSurface.
+
+My class-side has example methods, and I also inherit many examples from my superclass.
 "
 Class {
 	#name : #AthensCairoSurfaceExamples,
 	#superclass : #AthensSurfaceExamples,
-	#category : #'Athens-Examples-Demos'
+	#category : #'Athens-Examples-Cairo'
 }
+
+{ #category : #examples }
+AthensCairoSurfaceExamples class >> exampleAnimatedTigerInMorphicWindow [
+	^ AthensTigerWindow openAnimated
+]
 
 { #category : #examples }
 AthensCairoSurfaceExamples class >> exampleDrawTextPath [
@@ -47,8 +54,46 @@ AthensCairoSurfaceExamples class >> exampleDrawTextPath [
 		f unlock.
 	].
 	
-	surf asForm asMorph openInWindow
+	surf asMorph openInWindow
 
+]
+
+{ #category : #utilities }
+AthensCairoSurfaceExamples class >> exampleExportTigerOn: anAthensSurface [
+	(AthensTiger on: anAthensSurface) 
+		position: 300 @ -200;
+		draw.
+	anAthensSurface finish. "Required to end the file"
+
+]
+
+{ #category : #examples }
+AthensCairoSurfaceExamples class >> exampleExportTigerToPDF [
+
+	| surface |
+	surface := AthensCairoPDFSurface
+		extent: 500 asPoint
+		fileName: Time microsecondClockValue asString, '.pdf'.
+
+	self exampleExportTigerOn: surface.
+
+]
+
+{ #category : #examples }
+AthensCairoSurfaceExamples class >> exampleExportTigerToSVG [
+
+	| surface |
+	surface := AthensCairoSVGSurface
+		extent: 500 asPoint
+		fileName: Time microsecondClockValue asString, '.svg'.
+
+	self exampleExportTigerOn: surface.
+
+]
+
+{ #category : #examples }
+AthensCairoSurfaceExamples class >> exampleFlake [
+	AthensFlakeDemo open
 ]
 
 { #category : #examples }
@@ -77,7 +122,7 @@ A cairo image surface bits are exposed to bitblt operations via surface plugin.
 		2 timesRepeat: [ can draw. can setPaint: (Color green alpha:0.5)]
 	].
 
-	surf asForm asMorph openInWindow
+	surf asMorph openInWindow
 ]
 
 { #category : #utilities }

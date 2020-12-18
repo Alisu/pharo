@@ -12,6 +12,9 @@ Class {
 	#instVars : [
 		'rules'
 	],
+	#classVars : [
+		'RulesProfile'
+	],
 	#classInstVars : [
 		'default',
 		'managers'
@@ -60,28 +63,14 @@ ReRuleManager class >> default [
 { #category : #helpers }
 ReRuleManager class >> defaultRules [
 	^ self visibleRuleClasses
-			reject: [ :ruleClass |
-				"lint rules suck again…"
-				((ruleClass inheritsFrom: ReAbstractRule) and: [ ruleClass enabled not ]) or: [ 
-				self excludedRuleNames includes: ruleClass name ] ] 
-			thenCollect: #new
-]
-
-{ #category : #helpers }
-ReRuleManager class >> excludedRuleNames [
-
-	^ #(RBImplementedNotSentRule)
+			select: [ :ruleClass | ruleClass enabled ] 
+			thenCollect: [:ruleClass | ruleClass new]
 ]
 
 { #category : #'class initialization' }
 ReRuleManager class >> initialize [
-	self allInstances do: [ :inst |
-		self flag: 'remove in future. this is just to stop
-		            the announcements from choaking old instances'.
-		SystemAnnouncer uniqueInstance unsubscribe: inst ].
-
 	self reset.
-	self subscribe.
+	self subscribe
 ]
 
 { #category : #'instance creation' }
@@ -148,6 +137,20 @@ ReRuleManager class >> resetWithInform [
 	self inform: 'Cache of the Renraku rule manager has been reset'
 ]
 
+{ #category : #acccessing }
+ReRuleManager class >> ruleProfileSettingsOn: aBuilder [ 
+	<systemsettings>
+	(aBuilder pickOne: #rulesProfile)
+		order: 1;
+		label: 'Select a quality rules profile ';
+		description: 'Select a profile according to your experience with Pharo. This will allow the QualityAssistant to show the rules that are appropiate to your level.';
+		parent: #qualityAssistant;
+		target: self;
+		default: #setDefaultProfile;
+		domainValues: {'Default' translated -> #setDefaultProfile . 
+							'Beginner' translated -> #setBeginnerProfile }
+]
+
 { #category : #settings }
 ReRuleManager class >> ruleToggleGroupID [
 
@@ -164,15 +167,42 @@ ReRuleManager class >> ruleToggleSettingsOn: aBuilder [
 		parent: #qualityAssistant;
 		with: [ 
 			(self visibleRuleClasses sorted: [ :a :b | a name < b name ])
-				select: [ :rule | rule inheritsFrom: ReAbstractRule ] "because lint rules don't have #enabled"
-				thenDo: [ :rule | 
+				do: [ :rule | 
 					| inst |
 					inst := rule new.
 					(aBuilder setting: rule enabledSettingID)
 					selector: #enabled;
 					target: rule;
+					default: rule enabled;
 					label: inst name;
 					description: inst rationale ] ]
+]
+
+{ #category : #acccessing }
+ReRuleManager class >> rulesProfile [
+
+	^ RulesProfile ifNil: [ RulesProfile := #setDefaultProfile ]
+]
+
+{ #category : #acccessing }
+ReRuleManager class >> rulesProfile: aSelector [
+
+	RulesProfile := aSelector.
+	self perform: RulesProfile 
+]
+
+{ #category : #acccessing }
+ReRuleManager class >> setBeginnerProfile [
+
+	self visibleRuleClasses do: [ :rule | rule enabled: rule isBeginnerRule ].
+	self reset
+]
+
+{ #category : #acccessing }
+ReRuleManager class >> setDefaultProfile [
+
+	self visibleRuleClasses do: [ :rule | rule enabled: rule isDefaultRule ].
+	self reset
 ]
 
 { #category : #'event subscriptions' }
@@ -210,29 +240,16 @@ ReRuleManager class >> unsubscribe [
 ]
 
 { #category : #utilities }
-ReRuleManager class >> visibleLintRuleClasses [
-
-	^ RBLintRule withAllSubclasses select: #isVisible
-]
-
-{ #category : #utilities }
 ReRuleManager class >> visibleRuleClasses [
 
-	^ (ReAbstractRule withAllSubclasses select: #isVisible)
-	"remove this in the future ->", self visibleLintRuleClasses
+	^ (ReAbstractRule withAllSubclasses select: [:each | each isVisible])
+	"remove this in the future ->", RBLintRule withAllSubclasses select: [:each | each isVisible]
 ]
 
 { #category : #accessing }
 ReRuleManager >> allRules [
 
 	^ rules
-]
-
-{ #category : #'announcement handling' }
-ReRuleManager >> classAdded: aClassAddedAnnouncement [ 
-
-	(aClassAddedAnnouncement classAdded isKindOf: RBLintRule) 
-		ifTrue: [ self reset ] 
 ]
 
 { #category : #accessing }

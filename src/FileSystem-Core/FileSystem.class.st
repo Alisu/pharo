@@ -230,8 +230,7 @@ FileSystem >> copyDirectoryAndDelete: sourcePath to: destination [
 				message: 'not a directory';
 				signal ].
 	"The destination musn't exist yet"
-	destination exists ifTrue: 
-		[ FileAlreadyExistsException signalWith: destination ].
+	destination ifExists: [ FileAlreadyExistsException signalWith: destination ].
 
 	[self copyDirectory: sourcePath toReference: destination] 
 		on: Error 
@@ -252,7 +251,7 @@ FileSystem >> copyFileAndDelete: sourcePath to: destination [
 	[self copy: sourcePath toReference: destination] 
 		on: Error 
 		do: [ :error |
-			destination delete.
+			destination ensureDelete.
 			error signal].
 	self delete: sourcePath.
 	^destination
@@ -614,12 +613,6 @@ FileSystem >> isWritable: aResolvable [
 	a file that can be written to or directory that can be changed."
 	
 	^ store isWritable: (self resolve: aResolvable)
-]
-
-{ #category : #public }
-FileSystem >> mimeTypesAt: aResolvable [
-	"Return the possible mime types for the given path."
-	^ store mimeTypesAt: (self resolve: aResolvable)
 ]
 
 { #category : #public }

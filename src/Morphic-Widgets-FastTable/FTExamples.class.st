@@ -19,7 +19,6 @@ FTExamples class >> example1 [
 			sorted: [ :a :b | a name < b name]));
 		yourself.
 	list openInWindow
-
 ]
 
 { #category : #examples }
@@ -457,6 +456,21 @@ FTExamples class >> exampleListWithExplicitSearch [
 ]
 
 { #category : #examples }
+FTExamples class >> exampleListWithGenerator [
+	"Show a list with all Object methods"
+	<example>
+	<sampleInstance>
+	| list |
+
+	list := FTTableMorph new
+		extent: 300@550;
+		dataSource: (FTExampleMethodListGeneratorDataSource for: Object);
+		yourself.
+		
+	^ list openInWindow
+]
+
+{ #category : #examples }
 FTExamples class >> exampleListWithHeader [
 	"Show a list with all Object methods with a header"
 
@@ -501,6 +515,21 @@ FTExamples class >> exampleOutline2 [
 		extent: 300 @ 300;
 		dataSource: (FTOutlineDataSource items: data).
 	list openInWindow
+]
+
+{ #category : #examples }
+FTExamples class >> exampleRowNotHomogeneousList1 [
+	"Show a list with all Object methods"
+	<example>
+	| list |
+
+	list := FTTableMorph new
+		extent: 300@550;
+		beRowNotHomogeneous;
+		dataSource: (FTExampleMethodNotHomogeneousListDataSource for: Object);
+		yourself.
+		
+	^ list openInWindow
 ]
 
 { #category : #examples }
@@ -597,7 +626,7 @@ FTExamples class >> exampleSortableTable2 [
 				yourself);
 		addColumn:
 			((FTColumn id: 'Number of instance variables')
-				sortableOnProperty: #numberOfInstanceVariables;
+				sortableOnProperty: #instSize;
 				yourself);
 		dataSource: FTExampleClassInfoTableDataSource new;
 		selectFirst;
@@ -631,7 +660,7 @@ FTExamples class >> exampleSortableTable3 [
 				yourself);
 		addColumn:
 			((FTColumn id: 'Number of instance variables')
-				sortableUsing: #numberOfInstanceVariables ascending , #name ascending; "Sort by number of inst var, if the same, sort by name."
+				sortableUsing: #instSize ascending , #name ascending; "Sort by number of inst var, if the same, sort by name."
 				yourself);
 		dataSource: FTExampleClassInfoTableDataSource new;
 		selectFirst;
@@ -793,7 +822,7 @@ FTExamples class >> exampleTableHorizontalScroll [
 
 	<example>
 	| table |
-	table := FTTableMorph newTrialHorizontalScrollBar
+	table := FTTableMorph newWithHorizontalScrollBar
 		extent: 650 @ 500;
 		addColumn: ((FTColumn id: '#') width: 40);
 		addColumn: ((FTColumn id: 'Name') width: 350);

@@ -130,6 +130,12 @@ FFICallback >> getHandle [
 	^ self thunk
 ]
 
+{ #category : #invoking }
+FFICallback >> invokeAsFunctionWithArguments: aCollection [ 
+
+	^ self backendCallback invokeAsFunctionWithArguments: aCollection
+]
+
 { #category : #private }
 FFICallback >> newParser [ 
 	^ FFIFunctionParser new
@@ -146,9 +152,18 @@ FFICallback >> returnOnError [
 
 ]
 
+{ #category : #private }
+FFICallback >> shouldDebugExceptions [
+
+	^ true
+]
+
 { #category : #initialization }
 FFICallback >> signature: signature block: aBlock [
-	functionSpec := self newParser parseAnonymousFunction: signature.
+	| parser |
+	parser := self newParser.
+	functionSpec := parser parseAnonymousFunction: signature.
+	functionSpec resolveUsing: parser requestor.
 	block := aBlock.
 
 ]
@@ -166,7 +181,8 @@ FFICallback >> thunk [
 FFICallback >> valueWithArguments: args [
 
 	^ [ block valueWithArguments: args ]
-		on: Error 
-		fork: [ :e | e debug ]
-		return: [ self returnOnError ]
+		on: Error
+		fork: [ :e | 
+			self shouldDebugExceptions ifTrue: [ e debug ] ]
+		return: [ self returnOnError ].
 ]

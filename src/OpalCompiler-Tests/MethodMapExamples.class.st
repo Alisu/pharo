@@ -1,6 +1,9 @@
 Class {
 	#name : #MethodMapExamples,
 	#superclass : #Object,
+	#instVars : [
+		'ivar'
+	],
 	#category : #'OpalCompiler-Tests-Misc'
 }
 
@@ -9,6 +12,14 @@ MethodMapExamples >> defineCopiedVarBecomeDeadContext [
 	| a b |
 	b := [ a := 1.a := a + 1. thisContext tempNamed:'a' ].
 	^ b
+]
+
+{ #category : #examples }
+MethodMapExamples >> exampleAccessOuterFromCleanBlock [ 
+	<compilerOptions: #(+ optionCleanBlockClosure)>
+	| b |
+	b := 1. 
+	^[ thisContext tempNamed: 'b' ] value
 ]
 
 { #category : #examples }
@@ -56,6 +67,14 @@ MethodMapExamples >> exampleTempNamedPutCopying2 [
 ]
 
 { #category : #examples }
+MethodMapExamples >> exampleTempNamedPutCopying3 [
+	| b |
+	b := 1.
+	^[[ | a |
+		 a := b .thisContext tempNamed: 'b' put: 2. thisContext outerContext tempNamed: 'b' ] value ] value
+]
+
+{ #category : #examples }
 MethodMapExamples >> exampleTempNamedPutTempVector [
 	| b |
 	b := 1.
@@ -82,7 +101,7 @@ MethodMapExamples >> exampleTempNamedTempCopyingNestedBlock [
 ]
 
 { #category : #examples }
-MethodMapExamples >> exampleTempNamedTempCopyingNestedBlockPROBLEM [
+MethodMapExamples >> exampleTempNamedTempCopyingNestedBlock2 [
 	 | a |
 		 a := 2. 
 	^[| b | 
@@ -141,4 +160,31 @@ MethodMapExamples >> exampleTempNamedTempVectorNestedBlock [
 		b := a.
 		[  
 		 b := 2 . thisContext tempNamed: 'b' ] value] value
+]
+
+{ #category : #examples }
+MethodMapExamples >> helperMethod12 [
+	| i |
+	i := 5.
+	[ i=0 ] whileFalse: [ i := i - 1 ].
+]
+
+{ #category : #examples }
+MethodMapExamples >> helperMethod13 [
+	| i |
+	i := 5.
+	[ i=0 ] whileFalse: [ i := i - 1 ].
+	^[ 1 + 2 ]
+]
+
+{ #category : #examples }
+MethodMapExamples >> helperMethod14: aVisitor [
+	 [ aVisitor ]
+		 on: Error
+		 do: [ aVisitor ]
+]
+
+{ #category : #examples }
+MethodMapExamples >> ivar [
+	^ivar
 ]

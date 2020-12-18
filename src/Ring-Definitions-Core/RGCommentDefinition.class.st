@@ -37,13 +37,11 @@ RGCommentDefinition >> asActive [
 RGCommentDefinition >> asHistorical [
 
 	"Sets the receiver as historical object, which will allow itself to retrieve its data using the sourcePointer"
-	| realClass |
+
 	self annotationNamed: self class statusKey put: #historical.
-	self sourcePointer ifNil:[
-		realClass := self realClass.
-		realClass notNil ifTrue: [ 
-			realClass organization commentRemoteString
-				ifNotNil: [:str | self sourcePointer: str sourcePointer ] ] ]
+	self sourcePointer ifNil: [ 
+		self realClass ifNotNil: [ :realClass | 
+			self sourcePointer: realClass organization commentSourcePointer ] ]
 ]
 
 { #category : #'type of comments' }
@@ -210,8 +208,7 @@ RGCommentDefinition >> isValid [
 
 { #category : #'to remove as soon as possible' }
 RGCommentDefinition >> methodClass [
-	self flag: 'if comments are mixed with methods use #realClass instead'.
-	^self realClass
+	^ self realClass
 ]
 
 { #category : #accessing }
@@ -231,8 +228,7 @@ RGCommentDefinition >> printOn: aStream [
 
 { #category : #'to remove as soon as possible' }
 RGCommentDefinition >> selector [
-	self flag: 'if comments are mixed with methods use #name instead'.
-	^self name
+	^ self name
 ]
 
 { #category : #'backward compatibility' }

@@ -700,10 +700,12 @@ HaloMorph >> createHandleAt: aPoint color: aColor iconName: iconName [
 		ifTrue: [ handle := Morph newBounds: bou color: aColor.
 			handle borderWidth: 1.
 			handle useRoundedCorners.
+			handle borderColor: aColor muchDarker.
 			self setColor: aColor toHandle: handle
 			]
-		ifFalse: [ handle := EllipseMorph newBounds: bou color: aColor ].
-	handle borderColor: aColor muchDarker.
+		ifFalse: [ 
+			handle := EllipseMorph newBounds: bou color: aColor.
+			handle borderWidth: 0 ].
 	handle wantsYellowButtonMenu: false.
 	iconName
 		ifNotNil: [ ( self iconNamed: iconName )
@@ -805,6 +807,7 @@ HaloMorph >> doGrow: evt with: growHandle [
 	"Called while the mouse is down in the grow handle"
 
 	| newExtent extentToUse scale |
+	growingOrRotating ifFalse: [ ^self ].
 	evt hand obtainHalo: self.
 	newExtent := (target pointFromWorld: (evt cursorPoint - positionOffset)) - target topLeft.
 	evt shiftPressed ifTrue: [
@@ -850,6 +853,8 @@ HaloMorph >> doRot: evt with: rotHandle [
 	"Update the rotation of my target if it is rotatable.  Keep the relevant command object up to date."
 
 	| degrees |
+	
+	growingOrRotating ifFalse: [^self].
 	evt hand obtainHalo: self.
 	degrees := (evt cursorPoint - (target pointInWorld: target referencePosition)) degrees.
 	degrees := degrees - angleOffset degrees.
@@ -872,6 +877,7 @@ HaloMorph >> doRot: evt with: rotHandle [
 HaloMorph >> doScale: evt with: scaleHandle [
 	"Update the scale of my target if it is scalable."
 	| newHandlePos colorToUse |
+	growingOrRotating ifFalse: [ ^self ].
 	evt hand obtainHalo: self.
 	newHandlePos := evt cursorPoint - (scaleHandle extent // 2).
 	target scaleToMatch: newHandlePos.
@@ -922,7 +928,7 @@ HaloMorph >> endInteraction [
 
 { #category : #settings }
 HaloMorph >> gradientHalo [
-	^ true
+	^ false
 ]
 
 { #category : #accessing }
@@ -952,7 +958,7 @@ HaloMorph >> handleListenEvent: anEvent [
 
 { #category : #private }
 HaloMorph >> handleSize [
-	^ 20
+	^ 30
 ]
 
 { #category : #'meta-actions' }
@@ -974,6 +980,12 @@ HaloMorph >> innerTarget [
 
 	^ innerTarget
 
+]
+
+{ #category : #testing }
+HaloMorph >> isHaloMorph [ 
+
+	^ true
 ]
 
 { #category : #'halos and balloon help' }
@@ -1287,6 +1299,7 @@ HaloMorph >> startGrow: evt with: growHandle [
 	"Initialize resizing of my target.  Launch a command representing it, to support Undo"
 
 	| botRt |
+	growingOrRotating := true.
 	self obtainHaloForEvent: evt andRemoveAllHandlesBut: growHandle.
 	botRt := target point: target bottomRight in: owner.
 	positionOffset := (self world viewBox containsPoint: botRt)

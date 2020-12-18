@@ -1,12 +1,12 @@
 "
-I am a node representing a source code segement that could not be parsed. I am mainly used for source-code coloring where we should parse as far as possible and mark the rest as a failure.
+I am a node representing a source code segment that could not be parsed. I am mainly used for source-code coloring where we should parse as far as possible and mark the rest as a failure.
 
-Parsing faulty code without rasing a syntax error is done by 
+Parsing faulty code without raising a syntax error is done by 
 RBParser parseFaultyExpression:
 or
 RBParser parseFaultyMethod: 
 
-The return value are  either valid nodes representing the AST, or nodes representing the valid portion and a RBParseErrorNode for the remaining invalid code.
+The return value is either valid nodes representing the AST, or nodes representing the valid portion and an RBParseErrorNode for the remaining invalid code.
 
 
 "
@@ -16,7 +16,8 @@ Class {
 	#instVars : [
 		'errorMessage',
 		'value',
-		'start'
+		'start',
+		'stop'
 	],
 	#category : #'AST-Core-Nodes'
 }
@@ -43,9 +44,11 @@ RBParseErrorNode >> acceptVisitor: aProgramNodeVisitor [
 	^ aProgramNodeVisitor visitParseErrorNode: self
 ]
 
-{ #category : #converting }
-RBParseErrorNode >> adaptToSemanticNode [
-	" I can't provide more semantics "
+{ #category : #'as yet unclassified' }
+RBParseErrorNode >> arguments [
+	
+	"A parse error node has no arguments"
+	^ #()
 ]
 
 { #category : #converting }
@@ -94,6 +97,12 @@ RBParseErrorNode >> isParseError [
 	^true
 ]
 
+{ #category : #'as yet unclassified' }
+RBParseErrorNode >> isUnary [
+	
+	^ false
+]
+
 { #category : #accessing }
 RBParseErrorNode >> name [
 	"be polymorphic with variable nodes"
@@ -104,6 +113,18 @@ RBParseErrorNode >> name [
 { #category : #testing }
 RBParseErrorNode >> needsParenthesis [
 	^ false
+]
+
+{ #category : #'as yet unclassified' }
+RBParseErrorNode >> selector [
+	"A parse error node has an empty selector"
+	^ #''
+]
+
+{ #category : #'as yet unclassified' }
+RBParseErrorNode >> selectorParts [
+	
+	^ #()
 ]
 
 { #category : #accessing }
@@ -128,7 +149,14 @@ RBParseErrorNode >> startWithoutParentheses [
 
 { #category : #accessing }
 RBParseErrorNode >> stop [
-	^ start + value size - 1.
+	^ stop 
+		ifNil: [start + value size - 1]
+		ifNotNil: [ stop ]
+]
+
+{ #category : #accessing }
+RBParseErrorNode >> stop: aStopPosition [
+	stop := aStopPosition
 ]
 
 { #category : #accessing }

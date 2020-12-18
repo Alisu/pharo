@@ -1,3 +1,8 @@
+"
+I am a STON reader specialised on reading an SpStyle.
+
+Contrary to my parent, I accept .class [ ... ] constructions.
+"
 Class {
 	#name : #SpStyleSTONReader,
 	#superclass : #STONReader,
@@ -23,6 +28,19 @@ SpStyleSTONReader class >> fromString: aString [
 SpStyleSTONReader >> isStyleClassChar: char [ 
 
 	^ char = $.
+]
+
+{ #category : #private }
+SpStyleSTONReader >> lookupClass: name [
+
+	"The SpStyleSTONReader only looks for ston names in the hierarchy of SpStyle"
+	
+	^ classes 
+		at: name 
+		ifAbsentPut: [ 
+			self styleClasses 
+				detect: [ :class | class isMeta not and: [ class stonName = name ]  ]
+				ifNone: [ NotFound signalFor: name ] ]
 ]
 
 { #category : #parsing }
@@ -92,4 +110,10 @@ SpStyleSTONReader >> pushStyle: aStyle during: aBlock [
 SpStyleSTONReader >> styleClass [
 
 	^ SpStyleClass
+]
+
+{ #category : #private }
+SpStyleSTONReader >> styleClasses [
+
+	^ SpStyle allSubclasses, Color withAllSubclasses
 ]

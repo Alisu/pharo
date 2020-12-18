@@ -90,7 +90,7 @@ ChangeSet class >> changeSetsNamedSuchThat: nameBlock [
 	^ AllChangeSets select: [:aChangeSet | nameBlock value: aChangeSet name]
 ]
 
-{ #category : #'filein/out' }
+{ #category : #'file in/out' }
 ChangeSet class >> classesOrder: classes [
 	"Answer a collection with the classes ordered so they can be filed in."
 
@@ -186,7 +186,7 @@ ChangeSet class >> doesAnyChangeSetHaveClass: aClass andSelector: aSelector [
 	^ (self countOfChangeSetsWithClass: aClass andSelector: aSelector) > 0
 ]
 
-{ #category : #'filein/out' }
+{ #category : #'file in/out' }
 ChangeSet class >> fileOutChangeSetsNamed: nameList [
 	"File out the list of change sets whose names are provided"
      "ChangesOrganizer fileOutChangeSetsNamed: #('New Changes' 'miscTidies-sw')"
@@ -235,7 +235,7 @@ ChangeSet class >> gatherChangeSets [		"ChangeSet gatherChangeSets"
 	^ AllChangeSets
 ]
 
-{ #category : #'filein/out' }
+{ #category : #'file in/out' }
 ChangeSet class >> hasNoDependenciesFor: aTrait in: traits [
 	"Answer if the trait does not depend on a trait in the collection."
 
@@ -349,7 +349,8 @@ ChangeSet class >> newChanges: aChangeSet withOld: old [
 		when: MethodAdded send: #methodAdded: to: aChangeSet;
 		when: MethodModified send: #methodModified: to: aChangeSet;
 		when: MethodRemoved send: #methodRemoved: to: aChangeSet;
-		when: MethodRecategorized  send: #methodRecategorized: to: aChangeSet.
+		when: MethodRecategorized send: #methodRecategorized: to: aChangeSet;
+		when: DoItChunkImported send: #doItChunkImported: to: aChangeSet.
 		
 	
 	SystemAnnouncer uniqueInstance announce: (CurrentChangeSetChanged new old: old; new: aChangeSet ; yourself).
@@ -358,6 +359,7 @@ ChangeSet class >> newChanges: aChangeSet withOld: old [
 
 { #category : #services }
 ChangeSet class >> newChangesFromStream: aStream named: aName [
+
 	"File in the code from the stream into a new change set whose
 	name is derived from aName. Leave the 'current change set'
 	unchanged. Return the new change set or nil on failure."
@@ -366,15 +368,11 @@ ChangeSet class >> newChangesFromStream: aStream named: aName [
 	oldChanges := self current.
 	newName := aName withoutPeriodSuffix.
 	newSet := self basicNewChangeSet: newName.
-	[ | newStream |
-	      newSet ifNotNil:[
-			(aStream respondsTo: #converter:) ifFalse: [
-				newStream := MultiByteBinaryOrTextStream with: (aStream contentsOfEntireFile).
-				newStream reset.] ifTrue: [newStream := aStream].
-			self newChanges: newSet.
-			newStream setConverterForCode.
-			CodeImporter evaluateReadStream: newStream readStream].
-	aStream close] ensure: [self newChanges: oldChanges].
+	[
+	newSet ifNotNil: [ 
+		self newChanges: newSet.
+		CodeImporter evaluateReadStream: aStream ]
+	] ensure: [ self newChanges: oldChanges ].
 	^ newSet
 ]
 
@@ -459,7 +457,7 @@ ChangeSet class >> scanFile: file category: cat class: class meta: meta stamp: s
 	^items
 ]
 
-{ #category : #'filein/out' }
+{ #category : #'file in/out' }
 ChangeSet class >> traitsOrder: aCollection [ 
 	"Arrange the traits in the collection, first who don't depend on others."
 
@@ -546,7 +544,7 @@ ChangeSet >> assimilateAllChangesFoundIn: otherChangeSet [
 
 ]
 
-{ #category : #'filein/out' }
+{ #category : #'file in/out' }
 ChangeSet >> assurePostscriptExists [
 	"Make sure there is a StringHolder holding the postscript.  "
 
@@ -561,7 +559,7 @@ Be sure to put any further comments in double-quotes, like this one."
 ' ]
 ]
 
-{ #category : #'filein/out' }
+{ #category : #'file in/out' }
 ChangeSet >> assurePreambleExists [
 	"Make sure there is a StringHolder holding the preamble; if it's found to have reverted to empty contents, put up the template"
 
@@ -676,7 +674,7 @@ ChangeSet >> changedMessageList [
 	^ messageList asArray sort
 ]
 
-{ #category : #'filein/out' }
+{ #category : #'file in/out' }
 ChangeSet >> checkForSlips [
 	"Return a collection of method refs with possible debugging code in them."
 	| slips |
@@ -764,9 +762,23 @@ ChangeSet >> containsClass: aClass [
 	^ self changedClasses includes: aClass
 ]
 
-{ #category : #'filein/out' }
+{ #category : #'file in/out' }
 ChangeSet >> defaultChangeSetDirectory [
 	^self class defaultChangeSetDirectory
+]
+
+{ #category : #'change logging' }
+ChangeSet >> doItChunkImported: anAnnouncemnet [
+
+	ChangeSet current = self ifFalse: [ ^ self ].
+	
+	"Parse preamble and postcript as a do it."
+	
+	((anAnnouncemnet contents beginsWith: '"Change Set:') and: [ self preambleString isNil ])
+		ifTrue: [ self preambleString: anAnnouncemnet contents ].
+	((anAnnouncemnet contents beginsWith: '"Postscript:') and: [ self postscriptString isNil ])
+		ifTrue: [ self postscriptString: anAnnouncemnet contents ].
+
 ]
 
 { #category : #accessing }
@@ -858,7 +870,7 @@ ChangeSet >> fatDefForClass: class [
 	^ outStrm contents
 ]
 
-{ #category : #'filein/out' }
+{ #category : #'file in/out' }
 ChangeSet >> fileOut [
 	"File out the receiver, to a file whose name is a function of the  
 	change-set name and a unique numeric tag."
@@ -869,7 +881,7 @@ ChangeSet >> fileOut [
 	self fileOutBody: fileReference.
 ]
 
-{ #category : #'filein/out' }
+{ #category : #'file in/out' }
 ChangeSet >> fileOutBody: fileReference [
 
 	UIManager default
@@ -889,7 +901,7 @@ ChangeSet >> fileOutBody: fileReference [
 				toFileReference: fileReference ]
 ]
 
-{ #category : #'filein/out' }
+{ #category : #'file in/out' }
 ChangeSet >> fileOutChangesFor: class on: stream [
 	"Write out all the method changes for this class."
 
@@ -939,13 +951,12 @@ ChangeSet >> fileOutClassDefinition: class on: stream [
 	stream cr
 ]
 
-{ #category : #'filein/out' }
+{ #category : #'file in/out' }
 ChangeSet >> fileOutOn: stream [ 
 	"Write out all the changes the receiver knows about"
 
 	| classList traits classes traitList list |
-	(self isEmpty and: [stream isKindOf: FileStream])
-		ifTrue: [self inform: 'Warning: no changes to file out'].
+	self ifEmpty: [self inform: 'Warning: no changes to file out'].
 		
 	traits := self changedClasses select: [:each | each isTrait].
 	classes := self changedClasses select: [:each | each isBehavior & each isTrait not].
@@ -969,7 +980,7 @@ ChangeSet >> fileOutOn: stream [
 		[:aClassName | stream nextChunkPut: 'Smalltalk removeClassNamed: #', aClassName; cr].
 ]
 
-{ #category : #'filein/out' }
+{ #category : #'file in/out' }
 ChangeSet >> fileOutPSFor: class on: stream [
 	"Write out removals and initialization for this class."
 
@@ -1002,7 +1013,7 @@ ChangeSet >> fileOutPSFor: class on: stream [
 	stream cr
 ]
 
-{ #category : #'filein/out' }
+{ #category : #'file in/out' }
 ChangeSet >> fileOutPostscriptOn: stream [
 	"If the receiver has a postscript, put it out onto the stream.  "
 
@@ -1016,7 +1027,7 @@ ChangeSet >> fileOutPostscriptOn: stream [
 		cr
 ]
 
-{ #category : #'filein/out' }
+{ #category : #'file in/out' }
 ChangeSet >> fileOutPreambleOn: stream [
 	"If the receiver has a preamble, put it out onto the stream.  "
 
@@ -1067,20 +1078,15 @@ ChangeSet >> hasPreamble [
 	^ preamble notNil
 ]
 
-{ #category : #'filein/out' }
+{ #category : #'file in/out' }
 ChangeSet >> hasReportableSlip: aMethod [
 	"Answer whether the receiver contains anything that should be brought 
 	to the attention of the author when filing out. Customize the lists here 
-	to suit your preferences. If slips do not get reported in spite of your 
-	best efforts here, make certain that the Preference 'checkForSlips' is set 
-	to true."
+	to suit your preferences."
 
 	aMethod containsHalt ifTrue: [ ^true ].
-	#(#flag:) do: [ :aLit | (aMethod hasLiteral: aLit) ifTrue: [ ^ true ] ].
-	((aMethod literals 
-		select: #isVariableBinding
-		thenCollect: #key) includes: #Transcript) ifTrue: [ ^true ].
-	^ false
+	(aMethod sendsSelector: #flag:) ifTrue: [ ^ true ].
+	^aMethod readsRef: (Smalltalk globals associationAt: #Transcript)
 ]
 
 { #category : #initialization }
@@ -1191,7 +1197,7 @@ ChangeSet >> methodsWithoutComments [
 		(self methodChangesAtClass: aClass name) associationsDo: 
 				[:mAssoc | (#(remove addedThenRemoved) includes: mAssoc value) ifFalse:
 					[(aClass includesSelector:  mAssoc key) ifTrue:
-						[(aClass firstPrecodeCommentFor: mAssoc key) isEmptyOrNil
+						[(aClass>>mAssoc key) hasComment
 								ifTrue: [slips add: aClass name , ' ' , mAssoc key]]]]].
 	^ slips
 
@@ -1258,13 +1264,13 @@ ChangeSet >> oldNameFor: class [
 	^ (changeRecords at: class name) priorName
 ]
 
-{ #category : #'filein/out' }
+{ #category : #'file in/out' }
 ChangeSet >> postscript [
 	"Answer the string representing the postscript.  "
 	^postscript ifNotNil:[postscript isString ifTrue:[postscript] ifFalse:[postscript contents asString]]
 ]
 
-{ #category : #'filein/out' }
+{ #category : #'file in/out' }
 ChangeSet >> postscript: aString [
 	"Answer the string representing the postscript.  "
 	postscript := aString
@@ -1275,45 +1281,45 @@ ChangeSet >> postscriptHasDependents [
 	^false
 ]
 
-{ #category : #'filein/out' }
+{ #category : #'file in/out' }
 ChangeSet >> postscriptString [
 	"Answer the string representing the postscript.  "
 	^self postscript
 ]
 
-{ #category : #'filein/out' }
+{ #category : #'file in/out' }
 ChangeSet >> postscriptString: aString [
 	"Establish aString as the new contents of the postscript.  "
 	self postscript: aString
 ]
 
-{ #category : #'filein/out' }
+{ #category : #'file in/out' }
 ChangeSet >> preamble [
 	"Answer the string representing the preamble"
 	^preamble ifNotNil:[preamble isString ifTrue:[preamble] ifFalse:[preamble contents asString]]
 ]
 
-{ #category : #'filein/out' }
+{ #category : #'file in/out' }
 ChangeSet >> preamble: aString [
 	"Establish aString as the new contents of the preamble.  "
 
 	preamble := aString
 ]
 
-{ #category : #'filein/out' }
+{ #category : #'file in/out' }
 ChangeSet >> preambleString [
 	"Answer the string representing the preamble"
 
 	^self preamble
 ]
 
-{ #category : #'filein/out' }
+{ #category : #'file in/out' }
 ChangeSet >> preambleString: aString [
 	"Establish aString as the new contents of the preamble.  "
 	self preamble: aString.
 ]
 
-{ #category : #'filein/out' }
+{ #category : #'file in/out' }
 ChangeSet >> preambleTemplate [
 	"Answer a string that will form the default contents for a change set's preamble.
 	Just a first stab at what the content should be."

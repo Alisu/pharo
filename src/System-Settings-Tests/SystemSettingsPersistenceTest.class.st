@@ -12,6 +12,32 @@ Class {
 	#category : #'System-Settings-Tests'
 }
 
+{ #category : #asserting }
+SystemSettingsPersistenceTest >> assertStoredSettingsDoNotInclude: aIdentifier [
+
+	| nodes |
+	self assert: preferences exists.	
+	
+	nodes := preferences readStreamDo: [ :stream | STON fromStream: stream ].
+	
+	nodes detect: [ :aNode | aNode settingNodeIdentifier = aIdentifier printString ]  
+		ifFound: [ :aNode | self fail: 'The node has been found, it should not be there' ] 
+		ifNone: [ ^ self ]
+]
+
+{ #category : #asserting }
+SystemSettingsPersistenceTest >> assertStoredSettingsInclude: aIdentifier withValue: aValue [ 
+
+	| nodes |
+	self assert: preferences exists.	
+	
+	nodes := preferences readStreamDo: [ :stream | STON fromStream: stream ].
+	
+	nodes detect: [ :aNode | aNode settingNodeIdentifier = aIdentifier printString ]  
+		ifFound: [ :aNode | self assert: aNode realValue equals: aValue ] 
+		ifNone: [ self fail: 'Node with identifier ', aIdentifier printString, ' not found' ]
+]
+
 { #category : #accessing }
 SystemSettingsPersistenceTest >> booleanSettingNode [
 	^ systemSettings nodeNamed: #booleanSetting
@@ -71,6 +97,41 @@ SystemSettingsPersistenceTest >> testAllStoredSettings [
 		close.
 	self assert: systemSettings fileReference contents equals: 'random string'.
 	self assertEmpty: systemSettings allStoredSettings
+]
+
+{ #category : #'tests - storing - defaults' }
+SystemSettingsPersistenceTest >> testDefaultImageDoesNotStoreAnySetting [
+	| nodesToStore |
+	"An image with all default values should not save any setting.
+	The settings only should be saved if changed from default value"
+
+	Author
+		useAuthor: ''
+		during: [ 
+			nodesToStore := StoredSettingsFactory new fromSettingNodes: SettingBrowser currentTree nodeList.
+			nodesToStore := nodesToStore reject: [ :aNode | aNode hasDefaultValue ] ].
+
+	self assertCollection: nodesToStore hasSameElements: #()
+]
+
+{ #category : #'tests - storing - defaults' }
+SystemSettingsPersistenceTest >> testDefaultSettingValueIsNotIncludedInTheStoredFile [
+
+	MockSettings booleanSettingWithDefault: false.
+
+	systemSettings storeSettingNodes: MockSettings settingTree nodeList.
+	
+	self assertStoredSettingsDoNotInclude: #booleanSettingWithDefault.
+]
+
+{ #category : #'tests - storing - defaults' }
+SystemSettingsPersistenceTest >> testNonDefaultSettingValueIsIncludedInTheStoredFile [
+
+	MockSettings booleanSettingWithDefault: true.
+
+	systemSettings storeSettingNodes: MockSettings settingTree nodeList.
+	
+	self assertStoredSettingsInclude: #booleanSettingWithDefault withValue: true.
 ]
 
 { #category : #tests }
@@ -204,10 +265,24 @@ SystemSettingsPersistenceTest >> testStoredValueForSettingNoStoredValue [
 	self assert: value equals: nil.
 ]
 
+{ #category : #'tests - storing - defaults' }
+SystemSettingsPersistenceTest >> testStoringNonDefaultValueAndThenStoringTheDefaultRemovesTheNode [
+
+	"Store with a non default value"
+	MockSettings booleanSettingWithDefault: true.
+	systemSettings storeSettingNodes: MockSettings settingTree nodeList.
+
+	"Store with a default value"
+	MockSettings booleanSettingWithDefault: false.
+	systemSettings storeSettingNodes: MockSettings settingTree nodeList.
+	
+	self assertStoredSettingsDoNotInclude: #booleanSettingWithDefault.
+]
+
 { #category : #tests }
 SystemSettingsPersistenceTest >> testUniqueIdentifiers [
 	| names |
-	names := self systemSettingNodeList collect: #settingNodeIdentifier.
+	names := self systemSettingNodeList collect: [:each | each settingNodeIdentifier].
 	self assert: names size equals: names asSet size.
 ]
 

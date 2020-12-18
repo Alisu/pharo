@@ -11,10 +11,10 @@ Float >> arcCos [
 Float >> arcSin [
 	"Answer the angle in radians."
 
-	((self < -1.0) or: [self > 1.0]) ifTrue: [^DomainError signal: 'Value out of range' from: -1 to: 1].
-	((self = -1.0) or: [self = 1.0])
-		ifTrue: [^ Halfpi * self]
-		ifFalse: [^ (self / (1.0 - (self * self)) sqrt) arcTan]
+	(self < -1.0 or: [ self > 1.0 ]) ifTrue: [ ^ DomainError signal: 'Value out of range' from: -1 to: 1 ].
+	^ (self = -1.0 or: [ self = 1.0 ])
+		ifTrue: [ Halfpi * self ]
+		ifFalse: [ (self / (1.0 - (self * self)) sqrt) arcTan ]
 ]
 
 { #category : #'*Math-Operations-Extensions' }
@@ -22,10 +22,10 @@ Float >> arcTan: denominator [
 	"Answer the angle in radians.
 	Implementation note: use sign in order to catch cases of negativeZero"
 	
-	"-0.5 arcTan: -0.5 >>> -2.356194490192345"
-	"1.2 arcTan: 1.5 >>>  0.6747409422235526"
-	"1.2 arcTan: -1.5 >>> 2.4668517113662407"
-	^self = 0.0
+	"(-0.5 arcTan: -0.5) >>> -2.356194490192345"
+	"(1.2 arcTan: 1.5) >>>  0.6747409422235526"
+	"(1.2 arcTan: -1.5) >>> 2.4668517113662407"
+	^ self = 0.0
 		ifTrue: [denominator signBit = 0
 			ifTrue: [ 0 ]
 			ifFalse: [ self signBit = 0
@@ -117,7 +117,7 @@ Float >> closeTo: num [
 Float >> closeTo: num precision: aPrecision [
  	"Tell whether the receiver and arguments are close from each other given a precision"
 	
-	num isNumber ifFalse: [ ^ [self = num] ifError: [false]].
+	num isNumber ifFalse: [ ^ [self = num] onErrorDo: [false]].
 	self = 0.0 ifTrue: [^ num abs < aPrecision].
 	num = 0 ifTrue: [^self abs < aPrecision].
 	^self = num asFloat
@@ -261,7 +261,7 @@ Float >> reduce [
 { #category : #'*Math-Operations-Extensions' }
 Float >> round: numberOfWishedDecimal [
 	"Round the decimal part of the receiver to be limited to the number of wished decimal. Only leave a fixed amount of decimal"
-   "10.12345 round: 2 >>> 10.12 "
+   "(10.12345 round: 2) >>> 10.12 "
         
 	^(self asFraction round: numberOfWishedDecimal) asFloat
 
@@ -271,20 +271,21 @@ Float >> round: numberOfWishedDecimal [
 Float >> rounded [
 	"Answer the integer nearest the receiver.
 	Implementation note: super would not handle tricky inexact arithmetic"
-	
+
 	"self assert: 5000000000000001.0 rounded = 5000000000000001"
 
-	self fractionPart abs < 0.5
-		ifTrue: [^self truncated]
-		ifFalse: [^self truncated + self sign rounded]
+	^ self fractionPart abs < 0.5
+		ifTrue: [ self truncated ]
+		ifFalse: [ self truncated + self sign rounded ]
 ]
 
 { #category : #'*Math-Operations-Extensions' }
 Float >> safeArcCos [
 	"Answer the angle in radians."
-	(self between: -1.0 and: 1.0)
-		ifTrue: [^ self arcCos]
-		ifFalse: [^ self sign arcCos]
+
+	^ (self between: -1.0 and: 1.0)
+		ifTrue: [ self arcCos ]
+		ifFalse: [ self sign arcCos ]
 ]
 
 { #category : #'*Math-Operations-Extensions' }

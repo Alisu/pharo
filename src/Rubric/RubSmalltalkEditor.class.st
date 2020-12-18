@@ -5,12 +5,11 @@ Class {
 	#name : #RubSmalltalkEditor,
 	#superclass : #RubTextEditor,
 	#instVars : [
-		'selectorChooser',
 		'notificationStrategy',
 		'completionEngine'
 	],
 	#classVars : [
-		'CompletionEngine'
+		'CompletionEngineClass'
 	],
 	#category : #'Rubric-Editing-Code'
 }
@@ -41,17 +40,11 @@ RubSmalltalkEditor class >> buildShortcutsOn: aBuilder [
 	We list both variations explicitly because we want to be able to see the action code when inspecting the morph.
 	"
 
-	<keymap>
-	(aBuilder shortcut: #querySymbol)
-		category: RubSmalltalkEditor name
-		default: $q meta
-		do: [ :target | target editor querySymbol: nil ]
-		description: 'Query symbol'.
-	
-	(aBuilder shortcut: #browseIt)
+	<keymap>	
+	(aBuilder shortcut: #browseFullClass)
 		category: RubSmalltalkEditor name
 		default: $b meta
-		do: [ :target | target editor browseIt: nil ]
+		do: [ :target | target editor browseFullClass ]
 		description: 'Browse'.
 	
 	(aBuilder shortcut: #doIt)
@@ -135,21 +128,21 @@ RubSmalltalkEditor class >> buildShortcutsOn: aBuilder [
 ]
 
 { #category : #'completion engine' }
-RubSmalltalkEditor class >> completionEngine [
+RubSmalltalkEditor class >> completionEngineClass [
 	
-	^ CompletionEngine
+	^ CompletionEngineClass
 ]
 
 { #category : #'completion engine' }
-RubSmalltalkEditor class >> completionEngine: anEngine [
+RubSmalltalkEditor class >> completionEngineClass: anEngine [
 	
-	CompletionEngine := anEngine
+	CompletionEngineClass := anEngine
 ]
 
 { #category : #'completion engine' }
 RubSmalltalkEditor class >> noCompletion [
 
-	CompletionEngine := nil
+	CompletionEngineClass := nil
 ]
 
 { #category : #'completion engine' }
@@ -167,7 +160,7 @@ RubSmalltalkEditor >> basicInspectIt [
 ]
 
 { #category : #'source navigation' }
-RubSmalltalkEditor >> bestNodeInString: source at: selectionInterval edittingMode: aRubEdittingMode shouldFavourExpressions: isFavouringExpressions onError: aBlock [
+RubSmalltalkEditor >> bestNodeInString: source at: selectionInterval editingMode: aRubEdittingMode shouldFavourExpressions: isFavouringExpressions onError: aBlock [
 	"Find the best node in the source text in the identified selection area"
 	
 	| ast node start stop |
@@ -244,9 +237,32 @@ RubSmalltalkEditor >> bestNodeInTextAreaOnError: aBlock [
 	^ self
 		bestNodeInString: source
 		at: (start to: stop)
-		edittingMode: self editingMode
+		editingMode: self editingMode
 		shouldFavourExpressions: true
 		onError: aBlock
+]
+
+{ #category : #'as yet unclassified' }
+RubSmalltalkEditor >> bestNodeInTextAreaWithoutSelection [
+	"Find the best node in the editor text area trimming the selection to prepare for eventual deletion"
+	
+	| node start stop intervalTrimmedText |
+	
+	start := self textArea startIndex.
+	stop := self textArea stopIndex.
+	intervalTrimmedText := start = stop 
+					ifFalse: [ 	| beginning end |
+									beginning := end := ''.
+									start <= 1 ifFalse: [ beginning := self textArea string copyFrom: 1 to: start - 1 ].
+									stop >= self textArea text size ifFalse: [ end :=  self textArea string copyFrom: stop + 1 to: self textArea text size ].
+									beginning,end ]
+					 ifTrue: [ self textArea string ].
+		
+	node := self isScripting
+		ifTrue: [ RBParser parseFaultyExpression: intervalTrimmedText ]
+		ifFalse: [ RBParser parseFaultyMethod: intervalTrimmedText ].
+
+	^node bestNodeFor: (start to: start)
 ]
 
 { #category : #binding }
@@ -256,16 +272,13 @@ RubSmalltalkEditor >> bindingOf: aString [
 
 { #category : #'menu messages' }
 RubSmalltalkEditor >> browseClassFrom: aClassString [
-
 	"Launch a hierarchy browser for the class indicated by the current selection.  If multiple classes matching the selection exist, let the user choose among them."
 
 	| selectedClass |
-
 	"self lineSelectAndEmptyCheck: [ ^ self ]."
 	( aClassString isNil or: [ aClassString isEmpty ] )
 		ifTrue: [ textArea flash.
-			^ self
-			].
+			^ self ].
 
 	selectedClass := self model systemNavigation
 		classFromPattern: aClassString
@@ -274,25 +287,27 @@ RubSmalltalkEditor >> browseClassFrom: aClassString [
 	Smalltalk tools browser openOnClass: selectedClass
 ]
 
-{ #category : #'menu messages' }
-RubSmalltalkEditor >> browseClassFromIt [
-	"Launch a hierarchy browser for the class indicated by the current selection.  If multiple classes matching the selection exist, let the user choose among them."
+{ #category : #'editing keys' }
+RubSmalltalkEditor >> browseClassOfExpression [
+ 	"Launch a browser for the class of the current selection, i.e. if you select 1+2 then you will get a class browser on class Point. Notice that this method handles also when the expression is a class."
 	
-	"self lineSelectAndEmptyCheck: [^ self]."
-	self browseClassFrom: self findClassFromAST
+ 	self evaluateSelectionAndDo: [:result | result class instanceSide browse ].
+	^ true
 ]
 
 { #category : #'menu messages' }
-RubSmalltalkEditor >> browseIt [
-	"Launch a browser for the current selection, if appropriate"
-	^ self browseClassFromIt
+RubSmalltalkEditor >> browseFullClass [
+	"Launch a browser for the class indicated by the current selection. Note that if the selection is a valid expression it will browse the class of the result. If multiple classes matching the selection exist, let the user choose among them."
+	
 
+	"previous code was: self browseClassFrom: self findClassFromAST"
+	self browseClassOfExpression 
 ]
 
 { #category : #'editing keys' }
-RubSmalltalkEditor >> browseIt: t1 [ 
+RubSmalltalkEditor >> browseFullClassIt: t1 [ 
 
-	self browseIt.
+	self browseFullClass.
 	^ true
 ]
 
@@ -312,13 +327,6 @@ RubSmalltalkEditor >> classNamesContainingIt [
 	self model systemNavigation 
 		browseClassesWithNamesContaining: self selection string
 		caseSensitive: Sensor shiftPressed
-]
-
-{ #category : #events }
-RubSmalltalkEditor >> click: anEvent [ 	
-	self selectorChooserClose.
-	^ super click: anEvent 
-
 ]
 
 { #category : #'do-its' }
@@ -349,16 +357,19 @@ RubSmalltalkEditor >> completionAround: aBlock keyStroke: anEvent [
 	self isCompletionEnabled ifFalse: [  ^aBlock value ].
 	
 	(completionEngine handleKeystrokeBefore: anEvent editor: self) ifTrue:  [^ self ].
-	(self selectorChooserHandlesKeyboard: anEvent)
-				ifFalse: [ aBlock value ].
-	self selectorChooserKeystroke: anEvent.
+	
+	aBlock value.	
 	completionEngine handleKeystrokeAfter: anEvent editor: self
 
 ]
 
 { #category : #'completion engine' }
 RubSmalltalkEditor >> completionEngine [
-	^ completionEngine
+
+	^ completionEngine ifNil: [
+		CompletionEngineClass ifNotNil: [
+			self completionEngine: CompletionEngineClass new.
+			completionEngine ] ]
 ]
 
 { #category : #'completion engine' }
@@ -408,6 +419,21 @@ RubSmalltalkEditor >> computeSelectionIntervalFromCommentIn: aString at: anInter
 	^ commentInterval first + 1 to: commentInterval last - 1
 ]
 
+{ #category : #'menu messages' }
+RubSmalltalkEditor >> copySelection [
+	"Copy the current selection and store it in the paste buffer, unless a caret.  Undoer & Redoer: undoCutCopy"
+
+	| node charac |
+	"Research of selected node for eventual nesting of comment or string."
+	self lineSelectAndEmptyCheck: [^ self].
+	node := self bestNodeInTextAreaWithoutSelection.
+	charac := self getNestingCharacterFromAst: node.
+	charac ifNil: [ self clipboardTextPut: self selection ]
+		    ifNotNil: [ self clipboardTextPut: (self unNesting: self selection with: charac) ].
+	self editingState previousInterval: self selectionInterval.
+
+]
+
 { #category : #'do-its' }
 RubSmalltalkEditor >> debug: aStream [
 	| method receiver context |
@@ -425,19 +451,21 @@ RubSmalltalkEditor >> debug: aStream [
 
 { #category : #'do-its' }
 RubSmalltalkEditor >> debug: aCompiledMethod receiver: anObject in: evalContext [
-	| guineaPig context debugSession |
-	guineaPig := [ aCompiledMethod
-		valueWithReceiver: anObject
-		arguments: (evalContext ifNil: [ #() ] ifNotNil: [ {evalContext} ]) ]
-		newProcess.
-	context := guineaPig suspendedContext.
-	
-	debugSession := guineaPig newDebugSessionNamed: 'debug it' startedAt: context.
-	debugSession stepIntoUntil: [:currentContext | 
-		currentContext method == aCompiledMethod ].
-	
-	Smalltalk tools debugger openOn: debugSession withFullView: true.
-	
+
+	| process suspendedContext |
+	process := [ 
+	           aCompiledMethod
+		           valueWithReceiver: anObject
+		           arguments:
+		           (evalContext
+			            ifNil: [ #(  ) ]
+			            ifNotNil: [ { evalContext } ]) ] newProcess.
+	suspendedContext := process suspendedContext.
+	(OupsDebugRequest newForContext: suspendedContext)
+		process: process;
+		compiledMethod: aCompiledMethod;
+		label: 'debug it';
+		submit
 ]
 
 { #category : #'do-its' }
@@ -563,23 +591,16 @@ RubSmalltalkEditor >> findClassFromAST [
 	"Try to make a class name out of the current text selection"
 
 	| node fallbackBlock className |		
-	
 	"Preserve original behavior - although could consider building AST from selection"
 	self hasSelection ifTrue: [ 
 		^(self selection string copyWithoutAll: CharacterSet crlf) trimBoth ].
-	
 	fallbackBlock := [^nil].
-
 	node := self bestNodeInTextAreaOnError: fallbackBlock.
-	
 	[node isVariable] whileFalse: [ 
 	 	(node := node parent) ifNil: fallbackBlock ].
-	
 	className := node name.
-	
 	[ className first isUppercase ] whileFalse: [ 
 		(className := className allButFirst) ifEmpty: fallbackBlock  ].
-	
 	^className
 ]
 
@@ -674,7 +695,7 @@ RubSmalltalkEditor >> findValidKeywordIn: sourceCode at: locationIndex ifFound: 
 	node := self
 		bestNodeInString: sourceCode
 		at: locationInterval
-		edittingMode: self editingMode 
+		editingMode: self editingMode 
 		shouldFavourExpressions: false
 		onError: [ nil ].
 		
@@ -682,19 +703,10 @@ RubSmalltalkEditor >> findValidKeywordIn: sourceCode at: locationIndex ifFound: 
 		ifNotNil: [ 
 			node isLiteralNode
 				ifTrue: [ validLocation := false ].
-			node nodesDo: [ :subNode |
-				subNode comments
-					detect: [ :c | c intersectsInterval: locationInterval ]
-					ifFound: [ validLocation := false ] ] ].
+			node isCommentNode ifTrue: [ validLocation := false ] ].
 			
 	validLocation ifTrue: aBlock 
 			
-]
-
-{ #category : #private }
-RubSmalltalkEditor >> focusChanged [
-	super focusChanged.
-	self selectorChooserFocusChange 
 ]
 
 { #category : #'do-its' }
@@ -728,6 +740,7 @@ RubSmalltalkEditor >> implementorsOfIt [
 	| aSelector |
 	"self lineSelectAndEmptyCheck: [^ self]."
 	(aSelector := self selectedSelector) ifNil: [^ textArea flash].
+	aSelector isCharacter ifTrue: [^ textArea flash].
 	self implementorsOf: aSelector
 ]
 
@@ -742,8 +755,7 @@ RubSmalltalkEditor >> implementorsOfIt: aKeyboardEvent [
 { #category : #initialization }
 RubSmalltalkEditor >> initialize [
 	super initialize.
-	notificationStrategy := RubTextInsertionStrategy new editor: self.
-	CompletionEngine ifNotNil: [self completionEngine: CompletionEngine new]
+	notificationStrategy := RubTextInsertionStrategy new editor: self
 ]
 
 { #category : #keymapping }
@@ -790,9 +802,14 @@ RubSmalltalkEditor >> internalCallToImplementorsOf: aSelector [
 
 { #category : #'completion engine' }
 RubSmalltalkEditor >> isCompletionEnabled [
-	CompletionEngine ifNil: [ ^false ].
-	CompletionEngine isCompletionEnabled ifFalse: [ ^false ].
+	CompletionEngineClass ifNil: [ ^false ].
+	CompletionEngineClass isCompletionEnabled ifFalse: [ ^false ].
 	^ self editingMode isCompletionEnabled
+]
+
+{ #category : #testing }
+RubSmalltalkEditor >> isScripting [
+	^ self editingMode isScripting
 ]
 
 { #category : #testing }
@@ -931,6 +948,19 @@ RubSmalltalkEditor >> notify: aString at: anInteger in: aStream [
 
 ]
 
+{ #category : #'menu messages' }
+RubSmalltalkEditor >> paste [
+	"Paste the text from the shared buffer over the current selection and 
+	redisplay if necessary.  Undoer & Redoer: undoAndReselect."
+	| node charac nestedText |
+	"Research of selected node for eventual nesting of comment or string."
+	node := self bestNodeInTextAreaWithoutSelection.
+	charac := self getNestingCharacterFromAst: node.
+	nestedText := self stringNestedWith: charac.
+	self replace: self selectionInterval with: nestedText and:
+		[self selectAt: self pointIndex]
+]
+
 { #category : #'editing keys' }
 RubSmalltalkEditor >> pasteInitials: aKeyboardEvent [ 
 	"Replace the current text selection by an authorship name/date stamp; invoked by cmd-shift-v, easy way to put an authorship stamp in the comments of an editor."
@@ -953,22 +983,6 @@ RubSmalltalkEditor >> printIt [
 				on: Error
 				do: [ '<error in printString: try ''Inspect it'' to debug>' ].
 			self afterSelectionInsertAndSelect: printString ]
-]
-
-{ #category : #'basic-completion' }
-RubSmalltalkEditor >> querySymbol [
-	self selectorChooseQuerySymbol 
-]
-
-{ #category : #'typing/selecting keys' }
-RubSmalltalkEditor >> querySymbol: aKeyboardEvent [
-	"Invoked by Ctrl-q to query the Symbol table and display alternate symbols.
-	 See comment in completeSymbol:lastOffering: for details."
-
-	self closeTypeIn.
-	self selectorChooserClose.
-	self querySymbol.
-	^true
 ]
 
 { #category : #'menu messages' }
@@ -1034,36 +1048,18 @@ RubSmalltalkEditor >> selectPrecedingIdentifier [
 RubSmalltalkEditor >> selectedSelector [
 	"Try to make a selector out of the current text selection"
 
-	^ self selectedSelectorWithRecursionDepth: 0
-]
-
-{ #category : #'menu messages' }
-RubSmalltalkEditor >> selectedSelectorWithRecursionDepth: depth [
-
-	| node selectorFromAst |
-	
-	depth > 1 ifTrue: [ ^ nil ].
-	
+	| extractor |
+	extractor := CNSelectorExtractor new.
 	self hasSelection ifFalse: [ 
-		selectorFromAst := self findSelectorFromAST.
-		^ selectorFromAst 
-			ifNotNil: [ 
-				selectorFromAst ]
-			ifNil: [ 
-				self selectWord.
-				^ self selectedSelectorWithRecursionDepth: depth + 1 ] ].
-	
-	node := RBParser parseFaultyExpression: self selection string.
-	node
-		nodesDo: [ :n | 
-			n isMessage
-				ifTrue: [ ^ n selector ].
-			n isVariable
-				ifTrue: [ ^ n name ].
-			n isLiteralNode
-				ifTrue: [ ^ n value ] ].
-	"fall back"
-	^ self selection string asSymbol
+		| source ast |
+
+		source := self textArea string.
+		ast := self editingMode parseSource: source.
+
+		^ extractor extractSelectorFromAST: ast atPosition: self textArea startIndex
+	].
+
+	^ extractor extractSelectorFromSelection: self selection string
 ]
 
 { #category : #'menu messages' }
@@ -1116,102 +1112,6 @@ RubSmalltalkEditor >> selectionString [
 	^ quote = $"
 		ifTrue: [ selection copyFrom: 2 to: selection size - 1 ]
 		ifFalse: [ selection ].
-]
-
-{ #category : #'basic-completion' }
-RubSmalltalkEditor >> selectorChooseQuerySymbol [
-	| pref |
-	self hasSelection
-		ifFalse: [ self selectPrecedingIdentifier ].
-	pref := String
-		streamContents: [ :strm | 
-			self selection asString trimBoth
-				do: [ :c | 
-					c isSeparator
-						ifFalse: [ strm nextPut: c ] ] ].
-	selectorChooser := RubSelectorChooserMorph popUpPrefix: pref from: textArea
-]
-
-{ #category : #'basic-completion' }
-RubSmalltalkEditor >> selectorChooser [
-	^ selectorChooser
-
-]
-
-{ #category : #'basic-completion' }
-RubSmalltalkEditor >> selectorChooserChosenSelector: aSelector [
-	| newStart replacement caret prevSelection |
-	self selectorChooserClose.
-	aSelector ifNil: [ ^ self ].
-	self selectPrecedingIdentifier.
-	prevSelection := textArea selection.
-	newStart := self startIndex.
-	caret := self stopIndex.
-	replacement := String
-		streamContents: [ :strm | 
-			| kwds |
-			1 to: (kwds := aSelector keywords) size do: [ :i | 
-				strm nextPutAll: (kwds at: i).
-				i = 1
-					ifTrue: [ caret := newStart + strm contents size + 1 ].
-				strm
-					nextPutAll:
-						(i < kwds size
-							ifTrue: [ '  ' ]
-							ifFalse: [ ' ' ]) ] ].
-	prevSelection asString = replacement trimBoth
-		ifTrue: [ textArea flash ]
-		ifFalse: [ 
-			self replaceSelectionWith: replacement.
-			self selectFrom: caret to: caret - 1 ]
-]
-
-{ #category : #'basic-completion' }
-RubSmalltalkEditor >> selectorChooserClose [
-	selectorChooser 
-		ifNotNil: [ [selectorChooser delete] ensure: [selectorChooser := nil] ]
-]
-
-{ #category : #'basic-completion' }
-RubSmalltalkEditor >> selectorChooserFocusChange [
-	textArea hasFocus
-		ifTrue: [ selectorChooser ifNotNil: [ selectorChooser comeToFront ] ]
-]
-
-{ #category : #'basic-completion' }
-RubSmalltalkEditor >> selectorChooserHandlesKeyboard: aKeyboardEvent [
-	"Return true or false on whether the code editor can handle keyboard event"
-	
-	^ (selectorChooser notNil and: [ selectorChooser handlesKeyboard: aKeyboardEvent ])
-
-]
-
-{ #category : #'basic-completion' }
-RubSmalltalkEditor >> selectorChooserKeystroke: aKeyboardEvent [
-	| asciiValue |
-	selectorChooser 
-		ifNotNil: [(selectorChooser handlesKeyStroke: aKeyboardEvent) 
-			ifTrue: [selectorChooser keyStroke: aKeyboardEvent.
-				^ true]].
-	asciiValue := aKeyboardEvent keyValue.
-	asciiValue = Character cr asciiValue
-		ifTrue: [self selectorChooserClose.
-			^ true].
-	aKeyboardEvent controlKeyPressed
-		ifTrue: [self selectorChooserClose.
-			^ true].
-	"aKeyboardEvent commandKeyPressed
-		ifTrue: [self closeSelectorChooser.
-			^ true]."
-	self selectorChooserUpdate.
-	^ false
-]
-
-{ #category : #'basic-completion' }
-RubSmalltalkEditor >> selectorChooserUpdate [
-	selectorChooser ifNil: [^ self].
-	self selectorChooserClose.
-	self selectorChooseQuerySymbol 
 ]
 
 { #category : #'menu messages' }
@@ -1289,7 +1189,6 @@ RubSmalltalkEditor >> textArea: atextArea [
 
 	atextArea setCompletionEngine: self completionEngine.
 	super textArea: atextArea.
-	completionEngine setModel: self model
 ]
 
 { #category : #'menu messages' }
@@ -1300,7 +1199,7 @@ RubSmalltalkEditor >> widenSelectionIn: sourceCode selection: selectionInterval 
 	node := self 
 		bestNodeInString: sourceCode 
 		at: selectionInterval 
-		edittingMode: self editingMode 
+		editingMode: self editingMode 
 		shouldFavourExpressions: true 
 		onError: [ ^nil ].
 	

@@ -9,7 +9,8 @@ Class {
 		'model',
 		'editingState',
 		'selectionShowing',
-		'morph'
+		'morph',
+		'findReplaceService'
 	],
 	#classVars : [
 		'BlinkingCursor',
@@ -24,9 +25,10 @@ Class {
 	],
 	#classInstVars : [
 		'cmdActions',
-		'shiftCmdActions'
+		'shiftCmdActions',
+		'defaultFindReplaceServiceClass'
 	],
-	#category : #'Text-Edition'
+	#category : #'Text-Edition-Editor'
 }
 
 { #category : #settings }
@@ -148,6 +150,12 @@ TextEditor class >> cmdKeysInText: aBoolean [
 	CmdKeysInText := aBoolean
 ]
 
+{ #category : #shortcuts }
+TextEditor class >> defaultFindReplaceServiceClass [
+
+	^ defaultFindReplaceServiceClass ifNil: [ FindReplaceService ]
+]
+
 { #category : #settings }
 TextEditor class >> dumbbellCursor [
 	^ DumbbellCursor ifNil: [ DumbbellCursor := false ]
@@ -168,65 +176,80 @@ TextEditor class >> editingSettingsOn: aBuilder [
 		with: [	
 			(aBuilder setting: #selectionColor)
 				target: UITheme;
+				default: (Color r: 0.6862170087976539 g: 0.8347996089931574 b: 0.9794721407624634 alpha: 1.0);
 				targetSelector: #currentSettings;
 				label: 'Selection color'.
 			(aBuilder setting: #unfocusedSelectionColor)
 				target: UITheme;
 				targetSelector: #currentSettings;
 				description: 'The color of the selection for unfocused windows' ;
+				default: (Color r: 0.729227761485826 g: 0.8318670576735093 b: 0.9335288367546432 alpha: 1.0);
 				label: 'Unfocused selection color'.
 			(aBuilder setting: #selectionTextColor)
 				target: UITheme;
 				targetSelector: #currentSettings;
+				default: Color black;
 				label: 'Selection text color';
 				description: 'The color of the selection text'.
 			(aBuilder setting: #useSelectionBar)
 				target: TextEditor;
+				default: true;
 				label: 'Show the colored bar on the current line';
 				with: [
 					(aBuilder setting: #selectionBarColor)
 						target: UITheme;
 						targetSelector: #currentSettings;
+						default: (Color r: 0.6862170087976539 g: 0.8347996089931574 b: 0.9794721407624634 alpha: 0.058823529411764705);
 						label: 'Selection bar color'].
 			(aBuilder setting: #useSecondarySelection)
 				target: TextEditor;
+				default: true;
 				label: 'Use the secondary selection';
 				with: [
 					(aBuilder setting: #secondarySelectionTextColor)
 						target: UITheme;
 						targetSelector: #currentSettings;
+						default: Color black;
 						label: 'Secondary selection text color'].
 			(aBuilder setting: #useFindReplaceSelection)
 				target: TextEditor;
+				default: true;
 				label: 'Use the find and replace selection';
 				with: [
 					(aBuilder setting: #findReplaceSelectionColor)
 						target: UITheme;
 						targetSelector: #currentSettings;
+						default: (Color r: 1.0 g: 0.6001955034213099 b: 0.0 alpha: 0.4);
 						label: 'Find replace selection color'.
 					(aBuilder setting: #findReplaceSelectionTextColor)
 						target: UITheme;
 						targetSelector: #currentSettings;
+						default: Color black;
 						label: 'Find replace selection text color'].
 			(aBuilder setting: #caseSensitiveFinds) 
 				label: 'Case sensitive search';
 				target: TextEditor;
+				default: false;
 		 		description: 'If true, then the "find" command in text will always make its searches in a case-sensitive fashion'.
 			(aBuilder setting: #blinkingCursor) 
 				label: 'Blinking text cursor';
 				target: TextEditor;
+				default: true;
 		 		description: 'When true, the text cursor will blink.'.
 			(aBuilder setting: #dumbbellCursor) 
 				label: 'Dumbbell-shaped text cursor';
 				target: TextEditor;
+				default: false;
 		 		description: 'When true, the text cursor assumes the shape of a dumbbell, otherwise a vertical bar.'.
 			(aBuilder setting: #skipOverMultipleSpaces) 
 				label: 'Skip over white space';
 				target: TextEditor;
+				default: false;
 		 		description: 'When true, the text cursor treats multiple white-space characters as a single space for navigating (moving left/right).'.
 			(aBuilder setting: #walkAlongDisplayedLine) 
 				label: 'Walk along displayed line';
 				target: TextEditor;
+				default: true;
 		 		description: 'If set to true cursor movement will move along displayed lines rather than logical lines'.
 		]
 
@@ -467,7 +490,7 @@ TextEditor class >> textEditorMenuOn: aBuilder [
 		keyText: 'v';
 		selector: #paste;
 		iconName: #smallPasteIcon.
-	(aBuilder item: #'Paste...' translated)
+	(aBuilder item: #'Paste recent' translated)
 		selector: #pasteRecent;
 		iconName: #smallCopyIcon;
 		withSeparatorAfter.
@@ -1277,6 +1300,12 @@ TextEditor >> cut: aKeyboardEvent [
 	^true
 ]
 
+{ #category : #'find-select' }
+TextEditor >> defaultFindReplaceServiceClass [
+
+	^ FindReplaceService
+]
+
 { #category : #'new selection' }
 TextEditor >> deselect [
 	"If the text selection is visible on the screen, reverse its highlight."
@@ -1623,14 +1652,14 @@ TextEditor >> findAndSelect: aRegex startingAt: anIndex searchBackwards: searchB
 	oldSelectionInterval := self selectionInterval.
 	self selectInvisiblyFrom: anIndex to: anIndex - 1.
 	where :=  searchBackwards
-		ifTrue: [self findAndSelectPreviousOccurenceOf: aRegex]
-		ifFalse: [self findAndSelectNextOccurenceOf: aRegex].
+		ifTrue: [self findAndSelectPreviousOccurrenceOf: aRegex]
+		ifFalse: [self findAndSelectNextOccurrenceOf: aRegex].
 	where ifNil: [self selectInterval: oldSelectionInterval].
 	^ where
 ]
 
 { #category : #'find-select' }
-TextEditor >> findAndSelectNextOccurenceOf: aRegex [
+TextEditor >> findAndSelectNextOccurrenceOf: aRegex [
 	| where |
 	where := self findNext: aRegex startingAt: self stopIndex.
 	where ifNotNil: [self selectInterval: where].
@@ -1639,7 +1668,7 @@ TextEditor >> findAndSelectNextOccurenceOf: aRegex [
 ]
 
 { #category : #'find-select' }
-TextEditor >> findAndSelectPreviousOccurenceOf: aRegex [
+TextEditor >> findAndSelectPreviousOccurrenceOf: aRegex [
 
 	| where |
 
@@ -1683,7 +1712,7 @@ TextEditor >> findRegex [
 
 { #category : #'find-select' }
 TextEditor >> findReplaceService [
-	^ FindReplaceService default
+	^ findReplaceService ifNil: [ self defaultFindReplaceServiceClass newFor: self ]
 ]
 
 { #category : #'find-select' }
@@ -2263,7 +2292,7 @@ TextEditor >> offerFontMenu: aKeyboardEvent [
 { #category : #deprecated }
 TextEditor >> offerMenuFromEsc: aKeyboardEvent [
 	"The escape key was hit while the receiver has the keyboard focus; take action"
- 	ActiveEvent shiftPressed 
+ 	morph activeHand lastEvent shiftPressed 
 		ifFalse: [ self raiseContextMenu: aKeyboardEvent].
 	^ false 	
 ]
@@ -2346,13 +2375,11 @@ TextEditor >> performCmdActionsWith: aKeyboardEvent shifted: aBoolean return: re
 TextEditor >> pluggableYellowButtonActivity: shiftKeyState [
 	"Invoke the model's popup menu."
 
-	| menu |
-	(menu := self getPluggableYellowButtonMenu: shiftKeyState)
-		ifNil: [
-			^ false]
-		ifNotNil: [
+	^ (self getPluggableYellowButtonMenu: shiftKeyState)
+		ifNil: [ false ]
+		ifNotNil: [ :menu | 
 			menu invokeOn: model orSendTo: self.
-			^ true]
+			true ]
 ]
 
 { #category : #'accessing-selection' }
@@ -2418,7 +2445,7 @@ TextEditor >> processKeyStroke: aKeyboardEvent [
 TextEditor >> raiseContextMenu: aKeyboardEvent [
 
 	(morph respondsTo: #editView)
-		ifTrue: [ ^ morph editView yellowButtonActivity: ActiveEvent shiftPressed].
+		ifTrue: [ ^ morph editView yellowButtonActivity: morph activeHand lastEvent shiftPressed].
 	^ true
 ]
 
@@ -2850,7 +2877,7 @@ TextEditor >> setIndices: shiftPressed forward: forward [
 	| indices |
 	indices := Dictionary new.
 	self flag: 'to be reviewed'.
-	(shiftPressed)
+	shiftPressed
 		ifTrue: [
 			indices at: #moving put: self pointIndex.
 			indices at: #fixed put: self markIndex
@@ -2864,7 +2891,7 @@ TextEditor >> setIndices: shiftPressed forward: forward [
 					indices at: #fixed put: self stopIndex.
 				]
 		].
-	^indices
+	^ indices
 ]
 
 { #category : #'menu messages' }
@@ -2901,7 +2928,7 @@ TextEditor >> setSelectorSearch: aStringOrText [
 
 { #category : #'menu declaration' }
 TextEditor >> shiftedMenuKeyword [
-	^ 'textEditorShiftedMenu'
+	^ #textEditorShiftedMenu
 
 ]
 

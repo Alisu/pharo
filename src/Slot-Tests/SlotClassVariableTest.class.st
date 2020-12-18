@@ -79,10 +79,7 @@ SlotClassVariableTest >> testWantsInitializationAddsInitializeSlot [
 			name: self aClassName;
 			superclass: Object ].
 		
-	class1 addSlot: (InitializedSlot new 
-		name: #defaultValue;
-		default: 42;
-		yourself).
+	class1 addSlot: WriteOnceSlot new.
 
 	self assert: class1 slots size equals: 1.
 
@@ -101,10 +98,9 @@ SlotClassVariableTest >> testWantsInitializationSkipInitializeSlotIfAlreadyInHie
 		builder
 			name: self aClassName;
 			superclass: Object;
-			slots: { 
-				InitializedSlot new 
-					name: #defaultValue;
-					default: 42;
+			slots: {
+				WriteOnceSlot new
+					name: #foo;
 					yourself } ].
 
 	self assert: class1 slots size equals: 1.
@@ -115,11 +111,12 @@ SlotClassVariableTest >> testWantsInitializationSkipInitializeSlotIfAlreadyInHie
 			name: self anotherClassName;
 			superclass: class1;
 			slots: { 
-				InitializedSlot new 
-					name: #otherDefaultValue;
-					default: 42;
+				WriteOnceSlot new
+					name: #bar;
 					yourself } ].
 
 	self assert: class2 slots size equals: 1.
-	self deny: ((class2 >> #initialize) hasLiteral: #initializeSlots:)
+	class2
+		compiledMethodAt: #initialize
+		ifPresent: [ self fail: 'In case the super method already call #initializeSlots:, we don''t want to generate an initialize method' ]
 ]

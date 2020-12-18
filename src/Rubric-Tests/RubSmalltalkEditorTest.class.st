@@ -6,9 +6,10 @@ Class {
 	#superclass : #TestCase,
 	#instVars : [
 		'source',
-		'selection'
+		'selection',
+		'currentCompletion'
 	],
-	#category : #'Rubric-Tests'
+	#category : #'Rubric-Tests-Base'
 }
 
 { #category : #assertions }
@@ -22,7 +23,7 @@ RubSmalltalkEditorTest >> assertJumpsToPostionAfter: aString direction: isFwd pl
 	
 	mode := isPlayground ifTrue: [ RubSmalltalkScriptingMode new  ] ifFalse: [ RubSmalltalkCodeMode new ].
 	self
-		exectuteFindNextKeywordDirection: isFwd
+		executeFindNextKeywordDirection: isFwd
 		editingMode: mode
 		onFound: [ :loc | 
 			text := self source first: loc.
@@ -44,7 +45,7 @@ RubSmalltalkEditorTest >> assertJumpsToPostionBefore: aString direction: isFwd p
 
 	mode := isPlayground ifTrue: [ RubSmalltalkScriptingMode new  ] ifFalse: [ RubSmalltalkCodeMode new ].	
 	self
-		exectuteFindNextKeywordDirection: isFwd
+		executeFindNextKeywordDirection: isFwd
 		editingMode: mode
 		onFound: [ :loc | 
 			text := self source first: (self source size min: loc + aString size).
@@ -64,7 +65,7 @@ RubSmalltalkEditorTest >> assertJumpsToPostionFor: aString direction: isFwd play
 		ifFalse: [ RubSmalltalkCodeMode new ].
 		
 	self
-		exectuteFindNextKeywordDirection: isFwd
+		executeFindNextKeywordDirection: isFwd
 		editingMode: mode
 		onFound: [ :loc | 
 			isFwd
@@ -88,7 +89,7 @@ RubSmalltalkEditorTest >> assertNodeError [
 	result := RubSmalltalkEditor new
 		bestNodeInString: self source
 		at: self selection
-		edittingMode: RubSmalltalkCodeMode new
+		editingMode: RubSmalltalkCodeMode new
 		shouldFavourExpressions: true
 		onError: [ ^ true ].
 
@@ -101,7 +102,7 @@ RubSmalltalkEditorTest >> assertNodeError [
 RubSmalltalkEditorTest >> assertNodeSelector: aSelector [
 	| node |
 	
-	node := self exectuteBestNodeFor: aSelector.
+	node := self executeBestNodeFor: aSelector.
 
 	self assert: node selector equals: aSelector
 ]
@@ -115,7 +116,7 @@ RubSmalltalkEditorTest >> assertNodeSelector: aSelector description: aString [
 RubSmalltalkEditorTest >> assertNodeValue: anObject [
 	| node |
 	
-	node := self exectuteBestNodeFor: anObject printString.
+	node := self executeBestNodeFor: anObject printString.
 
 	self assert: node value equals: anObject 
 ]
@@ -129,7 +130,7 @@ RubSmalltalkEditorTest >> assertNodeValue: anObject description: aString [
 RubSmalltalkEditorTest >> assertNodeVariable: anObject [
 	| node |
 	
-	node := self exectuteBestNodeFor: anObject printString.
+	node := self executeBestNodeFor: anObject printString.
 
 	self assert: node name equals: anObject 
 ]
@@ -138,7 +139,7 @@ RubSmalltalkEditorTest >> assertNodeVariable: anObject [
 RubSmalltalkEditorTest >> assertPlaygroundNodeSelector: aSelector [
 	| node |
 	
-	node := self exectuteBestPlaygroundNodeFor: aSelector.
+	node := self executeBestPlaygroundNodeFor: aSelector.
 
 	self assert: node selector equals: aSelector
 ]
@@ -147,7 +148,7 @@ RubSmalltalkEditorTest >> assertPlaygroundNodeSelector: aSelector [
 RubSmalltalkEditorTest >> assertPlaygroundNodeValue: anObject [
 	| node |
 	
-	node := self exectuteBestPlaygroundNodeFor: anObject printString.
+	node := self executeBestPlaygroundNodeFor: anObject printString.
 
 	self assert: node value printString equals: (anObject isString ifTrue: [anObject ] ifFalse: [anObject printString])
 ]
@@ -159,34 +160,34 @@ RubSmalltalkEditorTest >> assertWidensToRegex: aString playground: isPlayground 
 	mode := isPlayground ifTrue: [ RubSmalltalkScriptingMode new  ] ifFalse: [ RubSmalltalkCodeMode new ].
 	self
 		widenSelectionWithMode: mode ifFound: [ :interval | 
-			text := self source copyFrom: interval first to: interval last.
+			text := self source copyFrom: interval first to: (interval last min: self source size).
 			^ self assert: (text matchesRegex: aString) description: 'The selected text node "', text, '", doesn''t match: "', aString, '"' ].
 			
 	self assert: false description: 'Did not find a selection node for, "' , aString , '"'
 ]
 
 { #category : #helpers }
-RubSmalltalkEditorTest >> exectuteBestNodeFor: aSelector [
-	^ self exectuteBestNodeFor: aSelector edittingMode: RubSmalltalkCodeMode new
+RubSmalltalkEditorTest >> executeBestNodeFor: aSelector [
+	^ self executeBestNodeFor: aSelector editingMode: RubSmalltalkCodeMode new
 ]
 
 { #category : #helpers }
-RubSmalltalkEditorTest >> exectuteBestNodeFor: aSelector edittingMode: aRubEdittingMode [
+RubSmalltalkEditorTest >> executeBestNodeFor: aSelector editingMode: aRubEdittingMode [
 	^ RubSmalltalkEditor new
 		bestNodeInString: self source
 		at: self selection
-		edittingMode: aRubEdittingMode
+		editingMode: aRubEdittingMode
 		shouldFavourExpressions: true
 		onError: [ self assert: false description: 'node not found for: ' , aSelector ]
 ]
 
 { #category : #helpers }
-RubSmalltalkEditorTest >> exectuteBestPlaygroundNodeFor: aSelector [
-	^ self exectuteBestNodeFor: aSelector edittingMode: RubSmalltalkScriptingMode new
+RubSmalltalkEditorTest >> executeBestPlaygroundNodeFor: aSelector [
+	^ self executeBestNodeFor: aSelector editingMode: RubSmalltalkScriptingMode new
 ]
 
 { #category : #helpers }
-RubSmalltalkEditorTest >> exectuteFindNextKeywordDirection: isFwd editingMode: aRubEditingMode onFound: aBlock [
+RubSmalltalkEditorTest >> executeFindNextKeywordDirection: isFwd editingMode: aRubEditingMode onFound: aBlock [
 
 	| textArea |
 	textArea := RubEditingArea new.
@@ -243,6 +244,13 @@ RubSmalltalkEditorTest >> selection: anInterval [
 	selection := anInterval
 ]
 
+{ #category : #running }
+RubSmalltalkEditorTest >> setUp [
+
+	super setUp.
+	currentCompletion := RubSmalltalkEditor completionEngineClass
+]
+
 { #category : #accessing }
 RubSmalltalkEditorTest >> source [
 	^ source
@@ -251,6 +259,13 @@ RubSmalltalkEditorTest >> source [
 { #category : #accessing }
 RubSmalltalkEditorTest >> source: aString [
 	source := aString
+]
+
+{ #category : #running }
+RubSmalltalkEditorTest >> tearDown [
+
+	RubSmalltalkEditor completionEngineClass: currentCompletion.
+	super tearDown.
 ]
 
 { #category : #'tests-bestNodeIn' }
@@ -326,23 +341,6 @@ RubSmalltalkEditorTest >> testBestNodeWithInvalidMethodIncompleteMidSourceOnMess
 ]
 
 { #category : #'tests-bestNodeIn' }
-RubSmalltalkEditorTest >> testBestNodeWithInvalidMethodOnValidStatementBelowError [
-	
-	self source: 'testMethod
-	self msg1.
-		
-	1 #broken
-	
-	self msg2.
-	^self'.
-	
-	self 
-		positionAfter: 'msg2';
-		assertNodeSelector: #msg2 description: 'should let you select a valid selector in valid code after the error'
-
-]
-
-{ #category : #'tests-bestNodeIn' }
 RubSmalltalkEditorTest >> testBestNodeWithInvalidPlaygroundIncompleteMidSource [
 	
 	self source: '
@@ -386,22 +384,6 @@ RubSmalltalkEditorTest >> testBestNodeWithInvalidPlaygroundParsableError [
 	self 
 		positionAfter: 'isSymbol ]';
 		assertPlaygroundNodeValue: 'RBBlockNode([ node isSymbol ])'.
-
-]
-
-{ #category : #'tests-bestNodeIn' }
-RubSmalltalkEditorTest >> testBestNodeWithInvalidPlaygroundUnParsableError [
-	
-	self source: 'fallbackBlock := [^self].
-	node := self bestNodeInTextAreaOnError: fallbackBlock.
-	
-	node isMethod ifFalse: [ 
-		node isValue and: [  node isSymbol ]
-		[ node isMessage ] whileFalse: [ false ]].'.
-	
-	self 
-		positionAfter: 'isMessage ]';
-		assertPlaygroundNodeValue: 'RBBlockNode([ node isMessage ])'.
 
 ]
 
@@ -576,29 +558,39 @@ RubSmalltalkEditorTest >> testBestNodeWithValidValueMidSource [
 ]
 
 { #category : #'tests-completion' }
-RubSmalltalkEditorTest >> testInstanceVersusSharedCompletionEngine [
+RubSmalltalkEditorTest >> testDefaultCompletionEngineUsesGlobalClass [
 
-	| textEditor currentCompletion |
-	[ currentCompletion := RubSmalltalkEditor completionEngine.
+	| textEditor |
 	textEditor := RubSmalltalkEditor new.
-	self assert: textEditor completionEngine class equals: currentCompletion.
-	
+	self assert: textEditor completionEngine class equals: currentCompletion
+]
+
+{ #category : #'tests-completion' }
+RubSmalltalkEditorTest >> testDefaultCompletionIsNilIfNoGlobalClass [
+
+	| textEditor |
+	textEditor := RubSmalltalkEditor new.
 	RubSmalltalkEditor noCompletion.
-	"here we show that an existing editor is not impacted by the shared behavior"
-	self assert: textEditor completionEngine class equals: currentCompletion.
+	self assert: textEditor completionEngine isNil
+]
+
+{ #category : #'tests-completion' }
+RubSmalltalkEditorTest >> testExplicitCompletionEngineIgnoresAbsenceOfGlobalClass [
+
+	| textEditor |
 	textEditor := RubSmalltalkEditor new.
-	self assert: textEditor completionEngine isNil.
-	
-	RubSmalltalkEditor completionEngine: NECController.
-	self assert: textEditor completionEngine isNil.
-	
-	"but now when we create a new one it gets the correct engine"
+	RubSmalltalkEditor noCompletion.
+	textEditor completionEngine: 17.
+	self assert: textEditor completionEngine equals: 17
+]
+
+{ #category : #'tests-completion' }
+RubSmalltalkEditorTest >> testExplicitCompletionEngineIgnoresGlobalClass [
+
+	| textEditor |
 	textEditor := RubSmalltalkEditor new.
-	self assert: textEditor completionEngine class equals: NECController.
-	
-	
-	] ensure: [ RubSmalltalkEditor completionEngine: currentCompletion ]
-	
+	textEditor completionEngine: 17.
+	self assert: textEditor completionEngine equals: 17
 ]
 
 { #category : #'tests-jumpFind' }
@@ -1010,9 +1002,6 @@ RubSmalltalkEditorTest >> testPlaygroundWidenOnErroneousSource [
 		positionSelection: '300';
 		assertWidensToRegex: '1 \+ 300' playground: true.
 		
-	self 
-		positionSelection: '5';
-		assertWidensToRegex: '\(String.*5\)' playground: true.
 	
 ]
 
@@ -1037,30 +1026,20 @@ RubSmalltalkEditorTest >> testPlaygroundWidenOnSelf [
 
 { #category : #'tests-completion' }
 RubSmalltalkEditorTest >> testSettingCompletionFromEditor [
-
-	| currentCompletion |
-	[ currentCompletion := RubSmalltalkEditor completionEngine. 
 	
-	RubSmalltalkEditor completionEngine: NECController.
-	self assert: RubSmalltalkEditor completionEngine equals: NECController.
-	
-	] ensure: [ RubSmalltalkEditor completionEngine: currentCompletion ]
-	
+	RubSmalltalkEditor completionEngineClass: CompletionEngine.
+	self assert: RubSmalltalkEditor completionEngineClass equals: CompletionEngine.
 ]
 
 { #category : #'tests-completion' }
 RubSmalltalkEditorTest >> testSettingCompletionFromEditorToTextArea [
 
-	| textEditor currentCompletion |
-	[ currentCompletion := RubSmalltalkEditor completionEngine.
-	
-	RubSmalltalkEditor completionEngine: NECController.
+	| textEditor |
+	RubSmalltalkEditor completionEngineClass: CompletionEngine.
 	textEditor := RubSmalltalkEditor new.
-	self assert: textEditor completionEngine class equals: NECController.
+	self assert: textEditor completionEngine class equals: CompletionEngine.
 	textEditor textArea: RubEditingArea new. 
-	self assert: textEditor textArea completionEngine class equals: NECController.
-	
-	] ensure: [ RubSmalltalkEditor completionEngine: currentCompletion ]
+	self assert: textEditor textArea completionEngine class equals: CompletionEngine.
 	
 ]
 
@@ -1211,10 +1190,6 @@ RubSmalltalkEditorTest >> testWidenOnErroneousMethod [
 	self 
 		positionSelection: '300';
 		assertWidensToRegex: '1 \+ 300' playground: false.
-		
-	self 
-		positionSelection: '5';
-		assertWidensToRegex: '\(String.*5\)' playground: false.
 	
 ]
 

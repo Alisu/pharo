@@ -5,9 +5,6 @@ I show the time that takes execute the test and the result of the tests.
 Class {
 	#name : #DTTestsProfiling,
 	#superclass : #DrTestsPlugin,
-	#instVars : [
-		'dataTestTime'
-	],
 	#category : #'DrTests-TestsProfiling'
 }
 
@@ -33,7 +30,7 @@ DTTestsProfiling >> firstListLabel [
 
 { #category : #accessing }
 DTTestsProfiling >> pragmaForResultTrees [
-	^ #'dTTestsProfilingResultTreeNamed:'
+	^ #'drTestsProfilingResultTreeNamed:order:'
 ]
 
 { #category : #api }
@@ -48,7 +45,7 @@ DTTestsProfiling >> runForConfiguration: aDTpluginConfiguration [
 	aDTpluginConfiguration asTestSuite
 		acceptSUnitVisitor: profilerVisitor.
 	results := self pluginResultClass new
-		testsResult: profilerVisitor profilingData;
+		testResults: profilerVisitor profilingData;
 		yourself.
 	^ results
 ]

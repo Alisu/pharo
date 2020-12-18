@@ -20,17 +20,16 @@ Context >> callPrimitive: primNumber [
 ]
 
 { #category : #'*Debugging-Core' }
-Context >> lookupSymbol: aSymbol [
+Context >> lookupTempVar: aSymbol [
 	| var |
-	var := (self sourceNodeExecuted scope) lookupVar: aSymbol.
-	"Local variables"
-	var isTemp ifTrue: [^ self tempNamed: aSymbol].
-	"Instance variables"
-	var isInstance ifTrue: [^ self receiver instVarNamed: aSymbol].
-	"Class variables and globals"
-	var isGlobal ifTrue: [ ^ var assoc value ].
-	^ nil.
-	
+	var := self lookupVar: aSymbol.
+	var isLocalVariable ifFalse: [ ^self error: var name, ' is not a temp but, ', var class name].
+	^var
+]
+
+{ #category : #'*Debugging-Core' }
+Context >> lookupVar: aSymbol [
+	^ self astScope lookupVar: aSymbol
 ]
 
 { #category : #'*Debugging-Core' }
@@ -44,21 +43,23 @@ Context >> methodReturnConstant: value [
 { #category : #'*Debugging-Core' }
 Context >> namedTempAt: index [
 	"Answer the value of the temp at index in the receiver's sequence of tempNames."
-	^self debuggerMap namedTempAt: index in: self
+	"NOTE: this list of temp names is completely virtual! It omits temp vectors but 
+	adds every variable that could be acccessed from a source perspective but might not be.
+	Do *not* use this!"
+	
+	self deprecated: 'Please access temps by name using #tempNamed:'.
+	^self tempNamed: (self tempNames at: index)
 ]
 
 { #category : #'*Debugging-Core' }
 Context >> namedTempAt: index put: aValue [
-	"Set the value of the temp at index in the receiver's sequence of tempNames.
-	 (Note that if the value is a copied value it is also set out along the lexical chain,
-	  but alas not in along the lexical chain.)."
-	^self debuggerMap namedTempAt: index put: aValue in: self
-]
-
-{ #category : #'*Debugging-Core' }
-Context >> pcRange [
-	"return the debug highlight for aPC"
-	^self sourceNodeExecuted debugHighlightRange 
+	"Set the value of the temp at index in the receiver's sequence of tempNames"
+	"NOTE: this list of temp names is completely virtual! It omits temp vectors but 
+	adds every variable that could be acccessed from a source perspective but might not be"
+	"Do *not* use this!"
+	self deprecated: 'Please access temps by name using #tempNamed:put:'.
+	
+	self tempNamed: (self tempNames at: index) put: aValue
 ]
 
 { #category : #'*Debugging-Core' }
@@ -67,7 +68,7 @@ Context >> pcRangeContextIsActive: contextIsActive [
 	| thePC |
 
   	"make sure we have some usable value (can happen for contexts in the ProcessBrowser"		
- 	thePC := pc ifNil: [self method endPC].		
+ 	thePC := self isDead ifTrue: [self endPC] ifFalse: [pc].
 
   	"When on the top of the stack the pc is pointing to right instruction, but deeper in the stack		
  	the pc was already advanced one bytecode, so we need to go back this one bytecode, which		
@@ -79,33 +80,13 @@ Context >> pcRangeContextIsActive: contextIsActive [
 ]
 
 { #category : #'*Debugging-Core' }
-Context >> previousPcWithCorrectMapping [
-	"Answer a pc inside the enclosing block or mathod that is correctly mapped to an AST node"
-	"This is an ugly and temporary fix for Pharo 3. 
-	Must be removed as soon as mappings are fixed"
-	| neighborPC |
-	neighborPC := self isDead 
-		ifTrue: [ self startpc ]
-		ifFalse: [ self previousPc ifNil: [self startpc]].
-	"There is a pushLiteral: nil bytecode for each temps in a block. 
-	There is a 'pushTemp:' bytecode for each copied value of a block.
-	These bytecodes are not mapped to any IR.
-	We skip both"
-	[ self isPushLiteralNil: neighborPC ] whileTrue: [ neighborPC := neighborPC + 1 ].
-	[ self isPushTemp: neighborPC ] whileTrue: [ neighborPC := neighborPC + 1 ].
-	"The block return ir instruction is mapped to the block instead of the sequence AST node. So we go just before it"
-	(self isBlockReturn: neighborPC) ifTrue: [ neighborPC := neighborPC - 1 ].
-	^ neighborPC
-]
-
-{ #category : #'*Debugging-Core' }
 Context >> quickSend: selector to: aReceiver with: arguments super: superFlag [
 	"Send the given selector with arguments in an environment which closely resembles the non-simulating environment, with an interjected unwind-protected block to catch nonlocal returns.
 	Attention: don't get lost!"
 	| lookupClass contextToReturnTo result |
 	contextToReturnTo := self.
 	lookupClass := superFlag
-					ifTrue: [(self method literalAt: self method numLiterals) value superclass]
+					ifTrue: [(self compiledCode literalAt: self compiledCode numLiterals) value superclass]
 					ifFalse: [self objectClass: aReceiver].
 	[ | oldSender |
 	oldSender := thisContext sender swapSender: self.
@@ -133,11 +114,16 @@ Context >> quickStep [
 ]
 
 { #category : #'*Debugging-Core' }
+Context >> readVariableNamed: aName [
+	^ (self lookupVar: aName) readInContext: self
+]
+
+{ #category : #'*Debugging-Core' }
 Context >> respondsToUnknownBytecode [
 	"This method is triggerred by the VM when the interpreter tries to execute an unknown bytecode"
 	
 	| unknownBytecode |
-	unknownBytecode := self method at: self pc.
+	unknownBytecode := self compiledCode at: self pc.
 	self error: 'VM cannot run unknown bytecode ', unknownBytecode printString
 	
 
@@ -211,7 +197,7 @@ Context >> runSimulated: aBlock contextAtEachStep: block2 [
 	returnContext := Context
 			sender: nil
 			receiver: self home receiver
-			method: self home method
+			method: self home compiledCode
 			arguments: self home arguments.
 	
 	current pushArgs: Array new from: returnContext.
@@ -293,38 +279,44 @@ Context class >> simulatePrimitiveNumber: num with: simulator [
 ]
 
 { #category : #'*Debugging-Core' }
-Context >> stepToHome: aContext [ 
+Context >> stepToHome: aContext [
 	"Resume self until the home of top context is aContext.  Top context may be a block context."
 
-	| home ctxt here error topContext context |
-	
+	| home ctxt here error context |
 	here := thisContext.
 	ctxt := self step.
-	ctxt = self ifFalse: [ 
-		"Insert ensure and exception handler contexts under aSender"
+	ctxt = self ifFalse: [ "Insert ensure and exception handler contexts under aSender"
 		error := nil.
-		context := aContext insertSender: (Context
-			contextOn: UnhandledError do: [:ex |
-				error ifNil: [
-					error := ex exception.
-					topContext := thisContext.
-					ex resumeUnchecked: here jump ]
-						ifNotNil: [ ex pass ]]).
-	].
+		context := aContext insertSender: (Context contextOn: UnhandledError do: [ :ex | 
+				            error
+					            ifNil: [ 
+						            error := ex exception.
+						            ex resumeUnchecked: here jump ]
+					            ifNotNil: [ ex pass ] ]) ].
 	home := aContext home.
-	home == ctxt home ifTrue: [ ^{ctxt. nil} ].
-	
-	[ctxt := ctxt step.
-	error ifNotNil: [
-		"Error was raised, remove inserted above contexts then return signaler context"
-			aContext terminateTo: context sender.  "remove above ensure and handler contexts"
-			^ {ctxt. error}].
-	
-	home == ctxt home] whileFalse: [
-		home isDead ifTrue: [^ {ctxt. nil}]
-	].
+	home == ctxt home ifTrue: [ 
+		^ { 
+			  ctxt.
+			  nil } ].
 
-	^ {ctxt. nil}
+	[ 
+	ctxt := ctxt step.
+	error ifNotNil: [ "remove above inserted ensure and handler contexts"
+		context ifNotNil: [ aContext terminateTo: context sender ].
+		^ { 
+			  ctxt.
+			  error } ].
+
+	home == ctxt home ] whileFalse: [ 
+		home isDead ifTrue: [ 
+			^ { 
+				  ctxt.
+				  nil } ] ].
+	"remove above inserted ensure and handler contexts"
+	context ifNotNil: [ aContext terminateTo: context sender ].
+	^ { 
+		  ctxt.
+		  nil }
 ]
 
 { #category : #'*Debugging-Core' }
@@ -333,9 +325,8 @@ Context >> stepToSendOrReturn [
 	returning a value to the receiver (that is, until switching contexts)."
 
 	| context |
-	[ self willSend or: [  self willReturn or: [ self willStore or: [self willCreateBlock ] ] ] ]
+	[ self isDead or: [ self willSend or: [  self willReturn or: [ self willStore or: [self willCreateBlock ] ] ] ] ]
 		whileFalse: [
-			self isDead ifTrue: [ ^ self ].
 			context := self step.
 			context == self ifFalse: [
 				"Caused by mustBeBoolean handling"
@@ -380,46 +371,42 @@ Context class >> tallyMethods: aBlock [
 
 { #category : #'*Debugging-Core' }
 Context >> tempNamed: aName [
-	"Returns the value of the temporaries, aName."
+	"Returns the value of the temporaries, aName"
 
-	"Implementation notes: temporary initialization in blocks simply uses pushNil to allocate and initialize each temp.  So if one inspects [|a|a:=2] and sends it self method symbolic you get:
-
-	13 <8F 00 00 05> closureNumCopied: 0 numArgs: 0 bytes 17 to 21
-	17 	<73> pushConstant: nil
-	18 	<77> pushConstant: 2
-	19 	<81 40> storeIntoTemp: 0
-	21 	<7D> blockReturn
-	22 <7C> returnTop
-
-	And when we check self asContext pc we get 17, which is *before* the nil is pushed. Therefore we should pay attention when querying a temporary if the temporary allocation was executed."
-
-	^self debuggerMap tempNamed: aName in: self
+	^(self lookupTempVar: aName) readInContext: self
 ]
 
 { #category : #'*Debugging-Core' }
 Context >> tempNamed: aName put: anObject [
-	^self debuggerMap tempNamed: aName in: self put: anObject 
+	"Assign the value of the temp with name in aContext"
+	
+	^(self lookupTempVar: aName) write: anObject inContext: self
 ]
 
 { #category : #'*Debugging-Core' }
 Context >> tempNames [
-	"Answer a SequenceableCollection of the names of the receiver's temporary 
-	 variables, which are strings."
-
-	^ self debuggerMap tempNamesForContext: self
+	"Answer all the temp names in scope in aContext starting with the home's first local 
+	(the first argument or first temporary if no arguments).
+	
+	These are all the temps that a programmer could access in the context, but keep in mind
+	that as they might not be accesses here. 
+	In addition, even vars that are accessed in this context could be stored
+	in a temp vector, which itself would be a copied temp that has no name..."
+	
+	^ self astScope allTempNames
 ]
 
 { #category : #'*Debugging-Core' }
 Context >> temporaryVariableNamed: aName [
 	(self hasTemporaryVariableNamed: aName)
 		ifFalse: [ ^ nil ].
-	^TemporaryVariable name: aName context: self
+	^self lookupTempVar: aName
 
 ]
 
 { #category : #'*Debugging-Core' }
 Context >> temporaryVariables [
-	^self tempNames collect: [ :name | TemporaryVariable new name: name ]
+	^self sourceNode temporaries collect: [ :each | each binding ] 
 
 ]
 
@@ -428,10 +415,11 @@ Context >> tempsAndValues [
 	"Return a string of the temporary variabls and their current values"
 	
 	^ String streamContents: [ :aStream |
-		self tempNames doWithIndex: [ :title :index |
-			 aStream nextPutAll: title; nextPut: $:; space; tab.
-			 self print: (self namedTempAt: index) on: aStream.
-			 aStream cr ]].
+		self tempNames 
+			do: [ :name  |
+			 aStream nextPutAll: name; nextPut: $:; space; tab.
+			 self print: (self tempNamed: name) on: aStream]
+			separatedBy: [aStream cr ]]
 ]
 
 { #category : #'*Debugging-Core' }
@@ -439,15 +427,21 @@ Context >> tempsAndValuesLimitedTo: sizeLimit indent: indent [
 	"Return a string of the temporary variabls and their current values"
 
 	^ String streamContents: [ :aStream |
-		self tempNames doWithIndex: [ :title :index |
-			indent timesRepeat: [ aStream tab ].
-			aStream nextPutAll: title; nextPut: $:; space; tab.
-			aStream nextPutAll: 
-				((self namedTempAt: index) printStringLimitedTo: (sizeLimit -3 -title size max: 1)).
-			aStream cr ]].
+		self tempNames 
+			do: [ :name |
+				indent timesRepeat: [ aStream tab ].
+				aStream nextPutAll: name; nextPut: $:; space; tab.
+				aStream nextPutAll: 
+					((self tempNamed: name) printStringLimitedTo: (sizeLimit -3 -name size max: 1))]
+			separatedBy: [aStream cr ]]
 ]
 
 { #category : #'*Debugging-Core' }
 Context >> unusedBytecode [
 	^ self respondsToUnknownBytecode 
+]
+
+{ #category : #'*Debugging-Core' }
+Context >> writeVariableNamed: aName value: anObject [ 
+	^ (self lookupVar: aName) write: anObject inContext: self
 ]

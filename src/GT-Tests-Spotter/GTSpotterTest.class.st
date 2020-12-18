@@ -31,8 +31,7 @@ GTSpotterTest >> setUp [
 	super setUp.
 	
 	spotter := GTMockSpotter new
-		exceptionHandler: GTSpotterDebuggingExceptionHandler new;
-		yourself
+
 ]
 
 { #category : #tests }
@@ -46,21 +45,20 @@ GTSpotterTest >> testEmptyTextInput [
 ]
 
 { #category : #tests }
-GTSpotterTest >> testHistorizingTheSameObjectRemovesPreviousOccurences [
+GTSpotterTest >> testHistorizingTheSameObjectRemovesPreviousOccurrences [
 	| history |
 	history := OrderedCollection new.
 	spotter := GTSpotter new history: history.
 	spotter historize: (GTSpotterCandidateLink new value: 42).
-	self assert: history size = 1.
+	self assert: history size equals: 1.
 	spotter historize: (GTSpotterCandidateLink new value: 43).
-	self assert: history size = 2.
-	self assert: history first value = 43.
-	self assert: history last value = 42.
+	self assert: history size equals: 2.
+	self assert: history first value equals: 43.
+	self assert: history last value equals: 42.
 	spotter historize: (GTSpotterCandidateLink new value: 42).
-	self assert: history size = 2.
-	self assert: history first value = 42.
-	self assert: history last value = 43.
-
+	self assert: history size equals: 2.
+	self assert: history first value equals: 42.
+	self assert: history last value equals: 43
 ]
 
 { #category : #tests }

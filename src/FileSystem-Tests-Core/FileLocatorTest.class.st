@@ -30,6 +30,51 @@ FileLocatorTest >> testCPath [
 	self assert: ref path equals: (Path / 'C:' / 'WINDOWS')
 ]
 
+{ #category : #'creation tests' }
+FileLocatorTest >> testCanCreateLocatorFromStringWhenDeepChild [
+	| path |
+	path := (FileLocator home / 'foo' / 'bar' / 'bee' / 'see') fullName.
+	
+	locator := FileLocator fromString: path ifNone: [ nil ].
+	
+	self
+		assert: locator origin
+		equals: #home.
+	self
+		assert: locator fullName
+		equals: path.
+]
+
+{ #category : #'creation tests' }
+FileLocatorTest >> testCanCreateLocatorFromStringWhenDirectChild [
+	| path |
+	path := (FileLocator home / 'foo') fullName.
+	
+	locator := FileLocator fromString: path ifNone: [ nil ].
+		
+	self
+		assert: locator origin
+		equals: #home.
+	self
+		assert: locator fullName
+		equals: path.
+]
+
+{ #category : #'creation tests' }
+FileLocatorTest >> testCanCreateLocatorFromStringWhenSamePath [
+	| path |
+	path := FileLocator home fullName.
+	
+	locator := FileLocator fromString: path ifNone: [ nil ].
+	
+	self
+		assert: locator
+		equals: FileLocator home.
+	self
+		assert: locator fullName
+		equals: path.
+]
+
 { #category : #'compatibility tests' }
 FileLocatorTest >> testCommaAddsExtension [
 
@@ -70,8 +115,8 @@ FileLocatorTest >> testEqual [
 	| a b |
 	a := FileLocator image.
 	b := FileLocator image.
-	self deny: a == b.
-	self assert: a = b.
+	self deny: a identicalTo: b.
+	self assert: a equals: b
 ]
 
 { #category : #'compatibility tests' }
@@ -84,6 +129,66 @@ FileLocatorTest >> testExtension [
 FileLocatorTest >> testFileSystem [
 	locator := FileLocator image.
 	self assert: (locator fileSystem isKindOf: FileSystem)
+]
+
+{ #category : #'creation tests' }
+FileLocatorTest >> testFromPathReturnsBlockValueIfPathNotPartOfAnOrigin [
+	| path |
+	path := '/foo' asFileReference path.
+	
+	locator := FileLocator fromPath: path ifNone: [ nil ].
+	
+	self
+		assert: locator
+		equals: nil.
+]
+
+{ #category : #'creation tests' }
+FileLocatorTest >> testGetRightLocatorWhenCreatingFromString [
+	| path |
+	path := (FileLocator documents / 'foo') fullName.
+
+	locator := FileLocator fromString: path ifNone: [ nil ].
+
+	self
+		assert: locator origin
+		equals: #documents.
+	self
+		assert: locator fullName
+		equals: path.
+]
+
+{ #category : #tests }
+FileLocatorTest >> testIfAbsent [
+	| reference |
+	reference := FileLocator temp / 'plonk'.
+	reference ensureCreateFile.
+	[ reference ifAbsent: [ :file | self fail ].
+	reference delete.
+	self assert: (reference ifAbsent: [ 'plonk' ]) equals: 'plonk' ]
+		ensure: [ reference ensureDelete ]
+]
+
+{ #category : #tests }
+FileLocatorTest >> testIfExists [
+	| reference |
+	reference := FileLocator temp / 'plonk'.
+	reference ensureCreateFile.
+	[ self assert: (reference ifExists: [ :file | file basename ]) equals: 'plonk'.
+	reference delete.
+	reference ifExists: [ :file | self fail ] ]
+		ensure: [ reference ensureDelete ]
+]
+
+{ #category : #tests }
+FileLocatorTest >> testIfExistsIfAbsent [
+	| reference |
+	reference := FileLocator temp / 'plonk'.
+	reference ensureCreateFile.
+	[ self assert: (reference ifExists: [ true ] ifAbsent: [ false ]).
+	reference delete.
+	self assert: (reference ifExists: [ false ] ifAbsent: [ true ]) ]
+		ensure: [ reference ensureDelete ]
 ]
 
 { #category : #'resolution tests' }
@@ -158,8 +263,8 @@ FileLocatorTest >> testResolveAbsoluteReference [
 	| result reference |
 	locator := FileLocator image / 'plonk'.
 	reference := FileSystem memory / 'griffle'.
-	result := locator resolve: reference..
-	self assert: result == reference
+	result := locator resolve: reference.
+	self assert: result identicalTo: reference
 ]
 
 { #category : #'resolution tests' }

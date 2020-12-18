@@ -42,6 +42,12 @@ LargePositiveIntegerTest >> assertSqrtCorrectlyRoundedForExponent: exp [
 		self assert: xp sqrt isFloat].
 ]
 
+{ #category : #coverage }
+LargePositiveIntegerTest >> classToBeTested [
+	
+	^ LargePositiveInteger
+]
+
 { #category : #tests }
 LargePositiveIntegerTest >> testBitShift [
 
@@ -113,10 +119,10 @@ LargePositiveIntegerTest >> testEmptyTemplate [
 LargePositiveIntegerTest >> testNormalize [
 	"Check normalization and conversion to/from SmallInts"
 
-	self assert: ((SmallInteger maxVal + 1 - 1) == SmallInteger maxVal).
-	self assert: (SmallInteger maxVal + 3 - 6) == (SmallInteger maxVal-3).
-	self should: ((SmallInteger minVal - 1 + 1) == SmallInteger minVal).
-	self assert: (SmallInteger minVal - 3 + 6) == (SmallInteger minVal+3).
+	self assert: SmallInteger maxVal + 1 - 1 identicalTo: SmallInteger maxVal.
+	self assert: SmallInteger maxVal + 3 - 6 identicalTo: SmallInteger maxVal - 3.
+	self should: SmallInteger minVal - 1 + 1 == SmallInteger minVal.
+	self assert: SmallInteger minVal - 3 + 6 identicalTo: SmallInteger minVal + 3
 ]
 
 { #category : #tests }
@@ -126,8 +132,8 @@ LargePositiveIntegerTest >> testReciprocalModulo [
 	r := Random seed: 46912151.
 	4691
 		timesRepeat: [ | a b c t |
-			a := (r nextInt: large) + 1.
-			b := (r nextInt: large) + 1.
+			a := (r nextInteger: large) + 1.
+			b := (r nextInteger: large) + 1.
 			a > b
 				ifTrue: [ t := a.
 					a := b.

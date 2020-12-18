@@ -1,6 +1,6 @@
 Class {
 	#name : #SpListPresenterSingleSelectionTest,
-	#superclass : #SpTest,
+	#superclass : #SpSpecTest,
 	#category : #'Spec2-Tests-Core-Widgets'
 }
 
@@ -347,8 +347,8 @@ SpListPresenterSingleSelectionTest >> testUnselectSelectedItemRaisesSingleEvent 
 SpListPresenterSingleSelectionTest >> testUnselectSelectedItemRemovesSelection [
 
 	presenter
-		selectIndex: 10;
-		unselectIndex: 10.
+		selectItem: 10;
+		unselectItem: 10.
 
 	self assert: presenter selection isEmpty
 ]

@@ -89,20 +89,24 @@ Class {
 	#instVars : [
 		'#application',
 		'#focusOrder',
-		'#additionalKeyBindings',
+		'#contextKeyBindings',
 		'#windowIcon => SpObservableSlot',
 		'#aboutText => SpObservableSlot',
 		'#askOkToClose => SpObservableSlot',
 		'#titleHolder => SpObservableSlot',
 		'#additionalSubpresentersMap',
-		'#layout',
+		'#layout => SpObservableSlot',
 		'#visible => SpObservableSlot',
-		'#extent => SpObservableSlot',
-		'#keyStrokesForNextFocus => SpObservableSlot',
-		'#keyStrokesForPreviousFocus => SpObservableSlot'
+		'#extent => SpObservableSlot'
 	],
 	#category : #'Spec2-Core-Base'
 }
+
+{ #category : #accessing }
+SpPresenter class >> currentApplication [ 
+
+	^ SpApplication defaultApplication
+]
 
 { #category : #specs }
 SpPresenter class >> defaultSpec [
@@ -173,13 +177,8 @@ SpPresenter class >> newApplication: anApplication owner: anOwningPresenter mode
 { #category : #'instance creation' }
 SpPresenter class >> on: aDomainObject [
 
-	"self 
-		deprecated: 'SpPresenters are instantiated in the context of an application!' 
-		on: '2019-02-26' 
-		in: #Pharo8."
-		
 	^ self 
-		newApplication: SpNullApplication new 
+		newApplication: self currentApplication
 		model: aDomainObject 
 ]
 
@@ -220,17 +219,9 @@ SpPresenter >> addAll: aWindow withSpecLayout: aSpec [
 		frame: (0@0 corner: 1@1).
 ]
 
-{ #category : #'window menu' }
+{ #category : #TOREMOVE }
 SpPresenter >> addMenuItemsToWindowMenu: aMenu [
 	"Do nothing"
-]
-
-{ #category : #'api-shortcuts' }
-SpPresenter >> additionalKeyBindings [
-
-	self flag: #TODO. "Think is... not all presenters can have keybindings. Why are we
-	putting this functionality here and not in a trait?"
-	^ additionalKeyBindings
 ]
 
 { #category : #TOREMOVE }
@@ -250,6 +241,16 @@ SpPresenter >> allPresenters [
 	allPresenters := OrderedCollection new.
 	self traversePresentersDo: [ :each | 
 		allPresenters add: each ].
+	^ allPresenters
+]
+
+{ #category : #private }
+SpPresenter >> allPresentersInFocusOrder [
+	| allPresenters |
+
+	allPresenters := OrderedCollection new.
+	self traverseInFocusOrderDo: [ :each |
+		allPresenters add: each  ].
 	^ allPresenters
 ]
 
@@ -292,7 +293,7 @@ SpPresenter >> application: anApplication [
 	application := anApplication
 ]
 
-{ #category : #'window menu' }
+{ #category : #TOREMOVE }
 SpPresenter >> applyMenuModel: aMenuModel [
 
 	aMenuModel menuGroups do: [ :group |
@@ -307,6 +308,7 @@ SpPresenter >> applyMenuModel: aMenuModel [
 { #category : #converting }
 SpPresenter >> asPresenter [
 	"This allows to use presenter instances inside layouts directly"
+
 	^ self
 ]
 
@@ -326,20 +328,27 @@ SpPresenter >> askOkToClose [
 { #category : #'private building' }
 SpPresenter >> basicBuildAdapterWithSpecLayout: aSpecLayout [
 
-	self flag: #TODO. "We will keep the layout used to build to allow recalculations 
-	 and other operations. But maybe this should be part of the adapter and not the presenter."
-	layout := aSpecLayout.
-	^ super basicBuildAdapterWithSpecLayout: aSpecLayout.
-
+	layout == aSpecLayout 
+		ifFalse: [ layout := aSpecLayout ].
+	^ super basicBuildAdapterWithSpecLayout: aSpecLayout
 ]
 
 { #category : #'api-shortcuts' }
 SpPresenter >> bindKeyCombination: aShortcut toAction: aBlock [
 
-	additionalKeyBindings ifNil: [ additionalKeyBindings := Dictionary new ].
-	additionalKeyBindings at: aShortcut put: aBlock.
+	contextKeyBindings ifNil: [ contextKeyBindings := KMCategory new ].
+	contextKeyBindings addKeymapEntry: (KMKeymap
+		shortcut: aShortcut
+		action: aBlock).
 	self withAdapterDo: [ :anAdapter | 
 		anAdapter bindKeyCombination: aShortcut toAction: aBlock ]
+]
+
+{ #category : #testing }
+SpPresenter >> canTakeKeyboardFocus [
+	"Answer when the presenter can take keyboard focus."
+
+	^ true
 ]
 
 { #category : #'api-window' }
@@ -367,6 +376,21 @@ SpPresenter >> connectPresenters [
 	"The method connectPresenters defines the interactions between the dif- ferent widgets. By connecting the behaviors of the different widgets it speci- fies the overall presentation, i.e., how the overall UI responds to interactions by the user. Usually this method consists of specifications of actions to per- form when a certain event is received by a widget. The whole interaction flow of the UI then emerges from the propagation of those events."
 ]
 
+{ #category : #'api-shortcuts' }
+SpPresenter >> contextKeyBindings [
+	"contextKeyBindings stores a KMCategory with keybindings for this presenter"
+
+	self flag: #TODO. "Think is... not all presenters can have keybindings. Why are we
+	putting this functionality here and not in a trait?"
+	^ contextKeyBindings
+]
+
+{ #category : #'api-shortcuts' }
+SpPresenter >> contextKeyBindings: aKMCategory [
+
+	contextKeyBindings := aKMCategory
+]
+
 { #category : #private }
 SpPresenter >> createInstanceFor: aClassSymbol [
 	"Retrieve the class corresponding to aClassSymbol using the bindings, then create a new instance of theis class"
@@ -374,6 +398,14 @@ SpPresenter >> createInstanceFor: aClassSymbol [
 	
 	class := self resolveSymbol: aClassSymbol.
 	^ self instantiate: class.
+]
+
+{ #category : #'api-focus' }
+SpPresenter >> defaultKeyboardFocus [
+	"Override this to allow the presenter to re-define the one that will answer the 
+	 takeKeyboardFocus call in composed presenters"
+
+	^ self
 ]
 
 { #category : #specs }
@@ -388,9 +420,10 @@ SpPresenter >> defaultWindowPresenterClass [
 	^ SpWindowPresenter
 ]
 
-{ #category : #'as yet unclassified' }
-SpPresenter >> defer: aBlockClosure [ 
-	self application defer: aBlockClosure
+{ #category : #accessing }
+SpPresenter >> defer: aBlock [
+
+	self application defer: aBlock
 ]
 
 { #category : #private }
@@ -420,35 +453,12 @@ SpPresenter >> ensureExtentFor: widget [
 	
 ]
 
-{ #category : #'private-focus' }
-SpPresenter >> ensureKeyBindingsFor: aWidget [
-
-	self registerKeyStrokesForNextFor: aWidget.
-	self registerKeyStrokesForPreviousFor: aWidget.
-	
-	self additionalKeyBindings associationsDo: [:association | aWidget bindKeyCombination: association key toAction: association value ]
-]
-
-{ #category : #'api-focus' }
-SpPresenter >> eventKeyStrokesForNextFocus [
-	"String describing the keystroke to perform to jump to the next widget"
-
-	^ keyStrokesForNextFocus
-]
-
-{ #category : #'api-focus' }
-SpPresenter >> eventKeyStrokesForPreviousFocus [
-	"String describing the keystroke to perform to jump to the previous widget"
-
-	^ keyStrokesForPreviousFocus
-]
-
-{ #category : #TOMOVE }
+{ #category : #TOREMOVE }
 SpPresenter >> extent [
 	^ extent
 ]
 
-{ #category : #TOMOVE }
+{ #category : #TOREMOVE }
 SpPresenter >> extent: aPoint [
 	^ extent := aPoint
 ]
@@ -464,48 +474,13 @@ SpPresenter >> focusOrder: anObject [
 	^ focusOrder := anObject
 ]
 
-{ #category : #'private-focus' }
-SpPresenter >> giveFocusToNextFrom: aModel [
-	| focus |
-	
-	focus := self focusOrder.
-	^ true
-]
-
-{ #category : #'private-focus' }
-SpPresenter >> giveFocusToPreviousFrom: aModel [ 
-	| focus |
-	
-	focus := self focusOrder.
-
-	(focus includes: aModel)
-		ifTrue: [
-			| index previous |
-			index := (focus indexOf: aModel) - 1.
-			(index > 0)
-				ifTrue: [
-					previous := focus at: index.
-					previous takeLastKeyboardFocus.
-					^ true ]].
-
-	^ owner 
-		ifNil: [ " I loop "
-			| next |
-			next := focus at: focus size ifAbsent: [ ^ false ].
-			next takeLastKeyboardFocus.
-			true]
-		ifNotNil: [ 
-			owner giveFocusToPreviousFrom: self.
-			true ]
-]
-
-{ #category : #'api-focus' }
+{ #category : #'inspector-Extensions' }
 SpPresenter >> gtInspectorPreviewIn: composite [
 	<gtInspectorPresentationOrder: 30>
 	self adapter ifNotNil: [ :w | w gtInspectorPreviewIn: composite ]
 ]
 
-{ #category : #'api-focus' }
+{ #category : #'inspector-Extensions' }
 SpPresenter >> gtInspectorSubPresentersIn: composite [
 	<gtInspectorPresentationOrder: 20>
 	composite tree
@@ -516,10 +491,12 @@ SpPresenter >> gtInspectorSubPresentersIn: composite [
 		when: [ :each | each presenters isNotEmpty ]
 ]
 
-{ #category : #'private-focus' }
-SpPresenter >> handlesKeyboard: evt [
+{ #category : #'api-focus' }
+SpPresenter >> hasKeyboardFocus [
 
-	^ true
+	self canTakeKeyboardFocus ifFalse: [ ^ false ].
+	self withAdapterDo: [ :anAdapter | ^ anAdapter hasKeyboardFocus ].
+	^ false
 ]
 
 { #category : #api }
@@ -549,6 +526,7 @@ SpPresenter >> initialExtent [
 
 { #category : #initialization }
 SpPresenter >> initialize [
+
 	super initialize.
 
 	visible := true.
@@ -563,7 +541,12 @@ SpPresenter >> initialize [
 SpPresenter >> initializePresenter [
 	"Now, presenters should implement #connectPresenters instead."
 
-	self property: #extent whenChangedDo: [ :ex | self withAdapterDo: [ :widget | (widget respondsTo: #extent:) ifTrue: [ widget extent: ex ] ] ]
+	self 
+		property: #extent 
+		whenChangedDo: [ :ex | 
+			self withAdapterDo: [ :widget | 
+				(widget respondsTo: #extent:) 
+					ifTrue: [ widget extent: ex ] ] ]
 ]
 
 { #category : #initialization }
@@ -579,9 +562,9 @@ SpPresenter >> initializePresenters [
 
 { #category : #'initialization - private' }
 SpPresenter >> initializePrivateAnnouncements [
-	self property: #keyStrokesForNextFocus whenChangedDo: [ self registerKeyStrokesForNextFor: self widget ].
-	self property: #keyStrokesForPreviousFocus whenChangedDo: [ self registerKeyStrokesForPreviousFor: self widget ].
-	self property: #titleHolder whenChangedDo: [ self updateTitle ]
+
+	self property: #titleHolder whenChangedDo: [ self updateTitle ].
+	self property: #layout whenChangedDo: [ :newLayout | self replaceLayoutWith: newLayout ]
 ]
 
 { #category : #'initialization - private' }
@@ -604,8 +587,7 @@ SpPresenter >> initializePrivateHooks [
 
 { #category : #'initialization - private' }
 SpPresenter >> initializePrivateValueHolders [
-	self keyStrokeForNextFocus: KMNoShortcut new.
-	self keyStrokeForPreviousFocus: KMNoShortcut new.
+
 	askOkToClose := false.
 	titleHolder := self class title
 ]
@@ -630,6 +612,23 @@ SpPresenter >> initializeWindow: aWindowPresenter [
 		windowIcon: self windowIcon;
 		askOkToClose: self askOkToClose;
 		aboutText: self aboutText
+]
+
+{ #category : #'inspector-Extensions' }
+SpPresenter >> inspectionSubPresenters [
+	<inspectorPresentationOrder: 910 title: 'Subpresenters'>
+	
+	^ SpTreePresenter new
+		roots: self presenters;
+		children: [ :each | each presenters ];
+		expandRoots;
+		yourself
+]
+
+{ #category : #'inspector-Extensions' }
+SpPresenter >> inspectionSubPresentersContext: aContext [
+	
+	aContext active: self presenters notEmpty
 ]
 
 { #category : #'instance creation' }
@@ -661,12 +660,12 @@ SpPresenter >> instantiatePresenters: aCollectionOfPairs [
 				pairsDo: [ :k :v | self instVarNamed: k asString put: (self createInstanceFor: v) ] ]
 ]
 
-{ #category : #api }
+{ #category : #testing }
 SpPresenter >> isBuilt [
 	^ self isDisplayed
 ]
 
-{ #category : #api }
+{ #category : #testing }
 SpPresenter >> isDisplayed [
 	"Return true if the widget is currently displayed on screen"
 	
@@ -677,29 +676,17 @@ SpPresenter >> isDisplayed [
 ]
 
 { #category : #testing }
+SpPresenter >> isRoot [
+
+	self withWindowDo: [ :w |
+		^ w presenter = self ].
+	^ false
+]
+
+{ #category : #testing }
 SpPresenter >> isVisible [
 	
 	^ visible value
-]
-
-{ #category : #'api-focus' }
-SpPresenter >> keyStrokeForNextFocus: aKMShortcut [
-	self keyStrokesForNextFocus: {aKMShortcut}
-]
-
-{ #category : #'api-focus' }
-SpPresenter >> keyStrokeForPreviousFocus: aKMShortcut [
-	self keyStrokesForPreviousFocus: {aKMShortcut}
-]
-
-{ #category : #'api-focus' }
-SpPresenter >> keyStrokesForNextFocus: aCollection [
-	keyStrokesForNextFocus := aCollection
-]
-
-{ #category : #'api-focus' }
-SpPresenter >> keyStrokesForPreviousFocus: aCollection [
-	keyStrokesForPreviousFocus := aCollection
 ]
 
 { #category : #accessing }
@@ -708,7 +695,39 @@ SpPresenter >> layout [
 	^ layout
 ]
 
-{ #category : #'window menu' }
+{ #category : #api }
+SpPresenter >> layout: aLayout [
+
+	layout := aLayout
+]
+
+{ #category : #private }
+SpPresenter >> layoutPresenters [
+
+	layout ifNil: [ ^ self presenters ].
+	
+	^ layout deepPresenters
+		select: [ :each | each isSymbol or: [ each isPresenter ] ]
+		thenCollect: [ :each | 
+			each isPresenter 
+				ifTrue: [ each ]
+				ifFalse:[ self presenterAt: each ] ]
+]
+
+{ #category : #accessing }
+SpPresenter >> locale [ 
+
+	^ self application locale
+]
+
+{ #category : #localization }
+SpPresenter >> localeChanged [
+
+	"do nothing here. Override me in subclasses to update strings presented to the users"
+	
+]
+
+{ #category : #TOREMOVE }
 SpPresenter >> neglectMenuModel: aMenuModel [
 
 	aMenuModel menuGroups do: [ :group |
@@ -721,6 +740,12 @@ SpPresenter >> neglectMenuModel: aMenuModel [
 SpPresenter >> newActionBar [
 
 	^ self instantiate: SpActionBarPresenter
+]
+
+{ #category : #widgets }
+SpPresenter >> newAthens [
+
+	^ self instantiate: SpAthensPresenter
 ]
 
 { #category : #widgets }
@@ -740,8 +765,8 @@ SpPresenter >> newCheckBox [
 ]
 
 { #category : #widgets }
-SpPresenter >> newCode [
-	^ self instantiate: SpCodePresenter
+SpPresenter >> newComponentList [
+	^ self instantiate: SpComponentListPresenter
 ]
 
 { #category : #widgets }
@@ -771,18 +796,14 @@ SpPresenter >> newDynamicPresentersListIn: accessorSymbol usingBuilder: aDynamic
 ]
 
 { #category : #widgets }
-SpPresenter >> newImage [
-	^ self instantiate: SpImagePresenter
+SpPresenter >> newFilteringList [
+
+	^ self instantiate: SpFilteringListPresenter
 ]
 
 { #category : #widgets }
 SpPresenter >> newLabel [
 	^ self instantiate: SpLabelPresenter
-]
-
-{ #category : #widgets }
-SpPresenter >> newLink [
-	^ self instantiate: SpLinkPresenter
 ]
 
 { #category : #widgets }
@@ -801,9 +822,9 @@ SpPresenter >> newMenuBar [
 ]
 
 { #category : #widgets }
-SpPresenter >> newMorph [
+SpPresenter >> newMenuButton [
 
-	^ self instantiate: SpMorphPresenter
+	^ self instantiate: SpMenuButtonPresenter
 ]
 
 { #category : #widgets }
@@ -830,6 +851,18 @@ SpPresenter >> newNumberInput [
 ]
 
 { #category : #widgets }
+SpPresenter >> newPopover [
+
+	^ self instantiate: SpPopoverPresenter
+]
+
+{ #category : #widgets }
+SpPresenter >> newPresenterSelector [
+
+	^ self instantiate: SpPresenterSelectorPresenter
+]
+
+{ #category : #widgets }
 SpPresenter >> newProgressBar [
 	^ self instantiate: SpProgressBarPresenter
 ]
@@ -837,6 +870,18 @@ SpPresenter >> newProgressBar [
 { #category : #widgets }
 SpPresenter >> newRadioButton [
 	^ self instantiate: SpRadioButtonPresenter
+]
+
+{ #category : #widgets }
+SpPresenter >> newRichText [
+
+	^ self instantiate: SpRichTextPresenter
+]
+
+{ #category : #widgets }
+SpPresenter >> newSearchInput [
+
+	^ self instantiate: SpSearchInputFieldPresenter
 ]
 
 { #category : #widgets }
@@ -867,9 +912,45 @@ SpPresenter >> newTextInput [
 ]
 
 { #category : #widgets }
-SpPresenter >> newToolBar [
+SpPresenter >> newToggleButton [
 
-	^ self instantiate: SpToolBarPresenter
+	^ self instantiate: SpToggleButtonPresenter
+]
+
+{ #category : #widgets }
+SpPresenter >> newToolbar [
+
+	^ self instantiate: SpToolbarPresenter
+]
+
+{ #category : #widgets }
+SpPresenter >> newToolbarButton [
+
+	^ self instantiate: SpToolbarButtonPresenter
+]
+
+{ #category : #widgets }
+SpPresenter >> newToolbarMenuButton [
+
+	^ self instantiate: SpToolbarMenuButtonPresenter
+]
+
+{ #category : #widgets }
+SpPresenter >> newToolbarPopoverButton [
+
+	^ self instantiate: SpToolbarPopoverButtonPresenter
+]
+
+{ #category : #widgets }
+SpPresenter >> newToolbarToggleButton [
+
+	^ self instantiate: SpToolbarToggleButtonPresenter
+]
+
+{ #category : #widgets }
+SpPresenter >> newTree [
+
+	^ self instantiate: SpTreePresenter
 ]
 
 { #category : #widgets }
@@ -913,12 +994,12 @@ SpPresenter >> presenterAt: aName ifAbsent: aBlock [
 
 { #category : #'private-traversing' }
 SpPresenter >> presenters [
-	| allPresenters |
+	| presenters |
 
-	allPresenters := OrderedCollection new.
+	presenters := OrderedCollection new.
 	self presentersDo: [ :each | 
-		allPresenters add: each ].
-	^ allPresenters
+		presenters add: each ].
+	^ presenters
 ]
 
 { #category : #'private-traversing' }
@@ -932,30 +1013,33 @@ SpPresenter >> presentersDo: aBlock [
 				aBlock value: var ] ]
 ]
 
-{ #category : #'private-focus' }
-SpPresenter >> registerKeyStrokesForNextFor: aWidget [
+{ #category : #private }
+SpPresenter >> presentersInFocusOrder [
 
-	aWidget ifNil: [ ^ self ].
-	
-	self eventKeyStrokesForNextFocus do: [:each |
-		aWidget bindKeyCombination: each toAction: [ self giveFocusToNextFrom: self ] ]
+	^ focusOrder ifNil: [ 
+		self layoutPresenters
+			select: [ :each | each isVisible and: [ each canTakeKeyboardFocus ] ] ]
 ]
 
-{ #category : #'private-focus' }
-SpPresenter >> registerKeyStrokesForPreviousFor: aWidget [
+{ #category : #private }
+SpPresenter >> rebuildLayout [
 
-	aWidget ifNil: [ ^ self ].
-	
-	self eventKeyStrokesForPreviousFocus do: [:each |
-		aWidget bindKeyCombination: each toAction: [ self giveFocusToPreviousFrom: self ] ]
+	self replaceLayoutWith: self layout
 ]
 
 { #category : #'api-shortcuts' }
 SpPresenter >> removeKeyCombination: aShortcut [
 
-	self additionalKeyBindings removeKey: aShortcut ifAbsent: [ ^ self ].
+	self contextKeyBindings removeKey: aShortcut ifAbsent: [ ^ self ].
 	self withAdapterDo: [ :anAdapter | 
 		anAdapter removeKeyCombination: aShortcut ]
+]
+
+{ #category : #private }
+SpPresenter >> replaceLayoutWith: aLayout [
+
+	self withAdapterDo: [ :anAdapter |
+		anAdapter replaceLayoutWith: aLayout ]
 ]
 
 { #category : #'api-window' }
@@ -979,15 +1063,6 @@ SpPresenter >> retrieveSpec: aSelector [
 	^ super retrieveSpec: aSelector
 ]
 
-{ #category : #TOMOVE }
-SpPresenter >> setExtentAndBindingTo: widget [
-
-	self flag: #TODO. "This is bad. Extent needs to be 'ensured' at adapter level. 
-	Same for keybindings"
-	self ensureExtentFor: widget.
-	self ensureKeyBindingsFor: widget
-]
-
 { #category : #'accessing model' }
 SpPresenter >> setModel: aDomainObject [
 
@@ -1006,19 +1081,15 @@ SpPresenter >> show [
 	visible := true
 ]
 
-{ #category : #'private-focus' }
+{ #category : #'api-focus' }
 SpPresenter >> takeKeyboardFocus [
+	| focus |
 
-	self focusOrder ifNotEmpty:[:focus | ^ focus first takeKeyboardFocus ].
-	^ self changed: #takeKeyboardFocus with: #()
-]
-
-{ #category : #'private-focus' }
-SpPresenter >> takeLastKeyboardFocus [
-
-	self focusOrder
-		ifEmpty: [ self takeKeyboardFocus ]
-		ifNotEmpty: [:focus | focus last takeKeyboardFocus ].
+	focus := self defaultKeyboardFocus.
+	focus == self ifFalse: [ ^ focus takeKeyboardFocus ].
+	
+	self withAdapterDo: [ :anAdapter | 
+		anAdapter takeKeyboardFocus ]
 ]
 
 { #category : #TOREMOVE }
@@ -1038,6 +1109,25 @@ SpPresenter >> title [
 SpPresenter >> toolName [
 
 	^ self class toolName
+]
+
+{ #category : #'private-traversing' }
+SpPresenter >> traverseInFocusOrderDo: aBlock [
+
+	self 
+		traverseInFocusOrderDo: aBlock 
+		excluding: Set new
+]
+
+{ #category : #'private-traversing' }
+SpPresenter >> traverseInFocusOrderDo: aBlock excluding: excludes [
+
+	"(excludes includes: self) ifTrue: [ ^ self ]. 
+	excludes add: self.
+	aBlock value: self."
+
+	self presentersInFocusOrder do: [ :each |
+		each traverseInFocusOrderDo: aBlock excluding: excludes ]
 ]
 
 { #category : #'private-traversing' }
@@ -1071,7 +1161,7 @@ SpPresenter >> update [
 SpPresenter >> updatePresenter [
 ]
 
-{ #category : #api }
+{ #category : #TOMOVE }
 SpPresenter >> updateTitle [
 
 	self flag: #TODO. "To move to WindowPresenter"
@@ -1087,13 +1177,6 @@ SpPresenter >> visibleIf: aValuable [
 { #category : #'api-events' }
 SpPresenter >> whenDisplayDo: aBlockClosure [
 	self announcer when: SpWidgetDisplayed do: aBlockClosure
-]
-
-{ #category : #'api-events' }
-SpPresenter >> whenShortcutsChanged: aBlock [
-	"Set a block to value when the shortcuts block has changed"
-	
-	self additionalKeyBindings whenChangedDo: aBlock
 ]
 
 { #category : #'api-events' }

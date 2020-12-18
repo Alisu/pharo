@@ -273,6 +273,7 @@ FT2Face >> ffiOutline: outline embolden: strength [
 { #category : #'private-ffi-calls' }
 FT2Face >> ffiOutline: outline transformByMatrix: matrix [
 	^ self ffiCall: #(void FT_Outline_Transform( FT_Outline*  outline, FT_Matrix*   matrix ))
+
 ]
 
 { #category : #'private-ffi-calls' }
@@ -657,11 +658,8 @@ FT2Face >> renderGlyphIntoForm: aForm pixelMode: pixelMode [
 	"render the current glyph (selected by loadChar/loadGlyph into the given form (1 or 8 bpp)
 	with pixel mode anInteger "
 
-	| ftBitmap buffer outline ftFace |
-
+	| ftBitmap buffer outline |
 	ftBitmap := FTBitmap new.
-
-	ftFace := FTFaceRec fromHandle: handle.
 	outline := self outline.
 
 	buffer := ExternalAddress allocate: aForm bits byteSize.

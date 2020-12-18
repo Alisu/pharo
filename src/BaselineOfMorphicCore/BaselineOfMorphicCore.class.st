@@ -38,8 +38,13 @@ BaselineOfMorphicCore >> baseline: spec [
 
 		spec package: 'System-VMEvents'.
 		spec package: 'System-Object Events'.
+		spec package: 'Collections-DoubleLinkedList'.
+		spec package: 'System-Caching'.
 		spec package: 'Graphics-Canvas'.
+		spec package: 'FormCanvas-Core'.
 		spec package: 'Tool-Registry'.
+		spec package: 'Fonts-Abstract'.
+		spec package: 'Text-Core'.
 		spec package: 'Morphic-Core'.
 	].
 ]
@@ -51,7 +56,7 @@ BaselineOfMorphicCore >> postload: loader package: packageSpec [
 
 	"Ignore pre and post loads if already executed"
 	Initialized = true ifTrue: [ ^ self ].
-
+	
 	IdentityTransform initialize.
 
 	EventSensorConstants initialize.
@@ -70,36 +75,31 @@ BaselineOfMorphicCore >> postload: loader package: packageSpec [
 	world instVarNamed: #worldState put: WorldState new.
 	hand := HandMorph new.
 	world addHand: hand.
-	world activeHand.
+	world activeHand: hand.
 
 	Smalltalk at: #World put: world.
 	Smalltalk at: #ActiveWorld put: world.
-	Smalltalk at: #ActiveHand put: hand.
-	Smalltalk at: #ActiveEvent put: nil.
 
 	world viewBox: Display boundingBox.
 
 	Smalltalk at: #Sensor put: InputEventSensor new.
 	InputEventSensor installEventSensorFramework.
 	InputEventSensor installMouseDecodeTable.
-
+	
 	(Smalltalk at: #Sensor) flushAllButDandDEvents.
-	world world handsDo: [:h | h initForEvents].
+	world handsDo: [:h | h initForEvents].
 	world borderWidth: 0.
-
-	MorphicCoreUIManager new spawnNewProcess.
+	
 	Display newDepth: 32.
 	world displayWorldSafely.
-	UIManager default: MorphicCoreUIManager new.
-	world displayWorldSafely.
-	UIManager default uiProcess resume.
-
-	World cleanseOtherworldlySteppers.
+	MorphicCoreUIManager new spawnNewProcess.
+	
+	world cleanseOtherworldlySteppers.
 	ExternalDropHandler resetRegisteredHandlers.
 
 	Display newDepth: 32.
 
-	(world instVarNamed: #worldState) canvas: nil.
+	(world instVarNamed: #worldState) invalidate.
 
 	hand instVarNamed: #targetOffset put: 0@0.
 

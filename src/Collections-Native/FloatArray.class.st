@@ -1,5 +1,7 @@
 "
 FloatArrays store 32bit IEEE floating point numbers.
+
+For further comments read comments of `WordArray`.
 "
 Class {
 	#name : #FloatArray,
@@ -18,6 +20,11 @@ FloatArray >> = aFloatArray [
 	1 to: self size do: [:i | (self at: i)
 			= (aFloatArray at: i) ifFalse: [^ false]].
 	^ true
+]
+
+{ #category : #adding }
+FloatArray >> addAssignToFloatArray: aFloatArray [
+	^ self primAddArray: aFloatArray
 ]
 
 { #category : #converting }

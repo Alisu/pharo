@@ -12,7 +12,7 @@ Class {
 		'ClassVar',
 		'singleton'
 	],
-	#category : #'Reflectivity-Tests'
+	#category : #'Reflectivity-Tests-Data'
 }
 
 { #category : #options }
@@ -26,6 +26,13 @@ ReflectivityExamples class >> metaLinkOptions [
 	^{
 	#exampleMethodWithMetaLinkOptionsViaClass -> #( + optionCompileOnLinkInstallation)
 	}
+]
+
+{ #category : #initialization }
+ReflectivityExamples >> compileTemporaryMethods [
+	self class compile: 'methodToBeRemoved ^nil'.
+	self class compile: 'methodToBeModified ^nil'.
+	self class compile: 'stubMethod ^nil'
 ]
 
 { #category : #examples }
@@ -60,7 +67,7 @@ ReflectivityExamples >> exampleAssignmentIvar: anObject [
 
 { #category : #examples }
 ReflectivityExamples >> exampleBlock [
-	^ [2 + 3] value 
+	^ [ 2 + 3 ] value 
 ]
 
 { #category : #examples }
@@ -88,7 +95,7 @@ ReflectivityExamples >> exampleGlobalRead [
 	^GlobalForTesting
 ]
 
-{ #category : #examples }
+{ #category : #'examples - optimized' }
 ReflectivityExamples >> exampleIfTrueIfFalse [
 
 	| t |
@@ -179,6 +186,14 @@ ReflectivityExamples >> exampleTwoSends [
 	^ 2 + 3
 ]
 
+{ #category : #'examples - optimized' }
+ReflectivityExamples >> exampleWhileFalse [
+	| t |
+	t := 1.
+	[ t > 10 ] whileFalse: [ t := t + 1].
+	^t
+]
+
 { #category : #examples }
 ReflectivityExamples >> exampleWithArg: anArg [
 	^ 2 + anArg
@@ -187,7 +202,15 @@ ReflectivityExamples >> exampleWithArg: anArg [
 { #category : #initialization }
 ReflectivityExamples >> initialize [
 	ivar := 33.
-	ClassVar := #AClassVar.
+	ClassVar := #AClassVar
+]
+
+{ #category : #initialization }
+ReflectivityExamples >> removeTemporaryMethods [
+	
+	self class removeSelector: #methodToBeRemoved.
+	self class removeSelector: #methodToBeModified.
+	self class removeSelector: #stubMethod
 ]
 
 { #category : #tagging }

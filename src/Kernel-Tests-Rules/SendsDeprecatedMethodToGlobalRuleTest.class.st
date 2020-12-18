@@ -1,6 +1,6 @@
 Class {
 	#name : #SendsDeprecatedMethodToGlobalRuleTest,
-	#superclass : #TestCase,
+	#superclass : #AbstractEnvironmentTestCase,
 	#instVars : [
 		'testClass',
 		'globalName'
@@ -21,7 +21,8 @@ SendsDeprecatedMethodToGlobalRuleTest >> globalName [
 		[ globalName :=
 			('TestGlobal', 1e10 atRandom asString) asSymbol
 		] doWhileTrue: [ 
-			Smalltalk globals includesKey: globalName ] ]
+			"if the name already exists, we generate another one"
+			testingEnvironment includesKey: globalName ] ]
 ]
 
 { #category : #properties }
@@ -35,7 +36,7 @@ SendsDeprecatedMethodToGlobalRuleTest >> setUp [
 	| deprClass |
 	super setUp.
 	deprClass := Object newAnonymousSubclass. 
-	Smalltalk globals at: self globalName put: deprClass new.
+	testingEnvironment at: self globalName put: deprClass new.
 	
 	deprClass compile: self deprecatedMethodName, ' self deprecated: ''this method is deprecated'''.
 	deprClass compile: self nonDeprecatedMethodName.
@@ -47,7 +48,7 @@ SendsDeprecatedMethodToGlobalRuleTest >> setUp [
 { #category : #running }
 SendsDeprecatedMethodToGlobalRuleTest >> tearDown [
 
-	Smalltalk globals removeKey: self globalName ifAbsent: [ ].
+	testingEnvironment removeKey: self globalName ifAbsent: [ ].
 	globalName := nil.
 	testClass := nil.
 	super tearDown 
@@ -60,7 +61,7 @@ SendsDeprecatedMethodToGlobalRuleTest >> testBasicCheck [
 	testMethod := testClass >> (
 		testClass compile: 'testMethod ', self globalName, ' ', self deprecatedMethodName).
 
-	self assert: (testMethod externalProperties anySatisfy: [ :eprop |
+	self assert: (testMethod critiques anySatisfy: [ :eprop |
 		eprop rule class = SendsDeprecatedMethodToGlobalRule ])
 ]
 
@@ -71,7 +72,7 @@ SendsDeprecatedMethodToGlobalRuleTest >> testBasicCheck1 [
 	testMethod := testClass >> (
 		testClass compile: 'testMethod ', self globalName, ' ', self nonDeprecatedMethodName).
 
-	self assert: (testMethod externalProperties noneSatisfy: [ :eprop |
+	self assert: (testMethod critiques noneSatisfy: [ :eprop |
 		eprop rule class = SendsDeprecatedMethodToGlobalRule ])
 ]
 
@@ -82,7 +83,7 @@ SendsDeprecatedMethodToGlobalRuleTest >> testBasicCheck2 [
 	testMethod := testClass >> (
 		testClass compile: 'testMethod ').
 
-	self assert: (testMethod externalProperties noneSatisfy: [ :eprop |
+	self assert: (testMethod critiques noneSatisfy: [ :eprop |
 		eprop rule class = SendsDeprecatedMethodToGlobalRule ])
 ]
 
@@ -96,6 +97,6 @@ SendsDeprecatedMethodToGlobalRuleTest >> testBasicCheck3 [
 	testMethod := testClass >> (
 		testClass compile: 'testMethod TestVar yourself').
 
-	self assert: (testMethod externalProperties noneSatisfy: [ :eprop |
+	self assert: (testMethod critiques noneSatisfy: [ :eprop |
 		eprop rule class = SendsDeprecatedMethodToGlobalRule ])
 ]

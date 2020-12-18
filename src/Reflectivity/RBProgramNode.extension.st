@@ -1,6 +1,11 @@
 Extension { #name : #RBProgramNode }
 
 { #category : #'*Reflectivity' }
+RBProgramNode >> addBreakpoint: aBreakpoint [
+	self breakpoints add: aBreakpoint 
+]
+
+{ #category : #'*Reflectivity' }
 RBProgramNode >> afterHooks [
 	^self propertyAt: #afterHooks ifAbsent: #()
 ]
@@ -36,6 +41,11 @@ RBProgramNode >> beforeLinks [
 ]
 
 { #category : #'*Reflectivity' }
+RBProgramNode >> breakpoints [
+	^ self propertyAt: #breakpoints ifAbsentPut: [ Set new ]
+]
+
+{ #category : #'*Reflectivity' }
 RBProgramNode >> clearReflectivityAnnotations [
 	self removeProperty: #preambles ifAbsent: [ ].
 	self removeProperty: #beforeHooks ifAbsent: [ ].
@@ -57,9 +67,7 @@ RBProgramNode >> hasBeenExecuted [
 
 { #category : #'*Reflectivity' }
 RBProgramNode >> hasBreakpoint [
-	
-	self hasMetalinkBefore ifFalse: [ ^false ].
-	^self beforeLinks anySatisfy: [ :link | link metaObject = Break ]
+	^ (self hasProperty: #breakpoints) and: [ self breakpoints notEmpty ]
 ]
 
 { #category : #'*Reflectivity' }
@@ -67,6 +75,11 @@ RBProgramNode >> hasExecutionCounter [
 	
 	self hasMetalinkBefore ifFalse: [ ^false ].
 	^self beforeLinks anySatisfy: [ :link | link metaObject class = ExecutionCounter ]
+]
+
+{ #category : #'*Reflectivity' }
+RBProgramNode >> hasLinks [
+	^ self links notNil and: [ self links notEmpty ]
 ]
 
 { #category : #'*Reflectivity' }
@@ -98,10 +111,10 @@ RBProgramNode >> hasMetalinkInstead [
 ]
 
 { #category : #'*Reflectivity' }
-RBProgramNode >> hasWatchpoint [
+RBProgramNode >> hasWatch [
 	
 	self hasMetalinkAfter ifFalse: [ ^false ].
-	^self afterLinks anySatisfy: [ :link | link metaObject class = Watchpoint ]
+	^self afterLinks anySatisfy: [ :link | link metaObject class = Watch ]
 ]
 
 { #category : #'*Reflectivity' }
@@ -120,12 +133,37 @@ RBProgramNode >> invalidate [
 ]
 
 { #category : #'*Reflectivity' }
+RBProgramNode >> isEquivalentTo: aNode [
+	self flag: 'should be tested, does not work on methods after links because of the wrappping now in place'.
+	^ aNode methodNode selector = self methodNode selector
+		and: [ aNode = self and: [ aNode start = self start and: [ aNode stop = self stop ] ] ]
+]
+
+{ #category : #'*Reflectivity' }
 RBProgramNode >> link: aMetaLink [
-	(aMetaLink checkForCompatibilityWith: self) ifFalse: [ self error: 'link requests reification that can not be provided by this node' ].
+	(aMetaLink checkForCompatibilityWith: self)
+		ifFalse: [ self error: 'link requests reification that can not be provided by this node' ].
 	(self propertyAt: #links ifAbsentPut: [ OrderedCollection new ]) add: aMetaLink.
 	aMetaLink installOn: self.
 	self clearReflectivityAnnotations.
-	self methodNode method installLink: aMetaLink. 
+	self methodNode method installLink: aMetaLink.
+	aMetaLink linkInstaller propagateLinkAddition: aMetaLink forNode: self.
+	aMetaLink announceInstall: self
+]
+
+{ #category : #'*Reflectivity' }
+RBProgramNode >> link: aMetaLink forObject: anObject [
+	aMetaLink linkToNode: self forObject: anObject
+]
+
+{ #category : #'*Reflectivity' }
+RBProgramNode >> linkIfAbsent: metalink [
+	"Per-object check only.
+	Links and nodes are stored in IdentitySet so there is already a guarantee that there will be no duplicates. However putting a link already existing for a given node will retrigger method compilation.
+	This check is used by MetaLinkInstaller only to avoid multiple and recursive reinstallation of links on nodes." 
+	(self hasLinks and: [ self links includes: metalink ])
+		ifTrue: [ ^ self ].
+	self link: metalink
 ]
 
 { #category : #'*Reflectivity' }
@@ -149,14 +187,27 @@ RBProgramNode >> preambles [
 ]
 
 { #category : #'*Reflectivity' }
-RBProgramNode >> removeLink: aMetaLink [
+RBProgramNode >> removeBreakpoint: aBreakpoint [
+	self breakpoints remove: aBreakpoint ifAbsent: []
+]
 
-	self hasMetalink ifFalse: [ ^ self ].
-	
-	self links remove: aMetaLink ifAbsent: [].
+{ #category : #'*Reflectivity' }
+RBProgramNode >> removeLink: aMetaLink [
+	self hasMetalink
+		ifFalse: [ ^ self ].
+	self links remove: aMetaLink ifAbsent: [  ].
 	self links ifEmpty: [ self removeProperty: #links ].
 	self clearReflectivityAnnotations.
-	self methodNode method removeLink: aMetaLink. 
+	(self methodNode methodClass methodDict includesKey: self methodNode selector)
+		ifFalse: [ ^ self ].
+	self methodNode method removeLink: aMetaLink.
+	aMetaLink linkInstaller propagateLinkRemoval: aMetaLink forNode: self.
+	aMetaLink announceRemove: self
+]
+
+{ #category : #'*Reflectivity' }
+RBProgramNode >> removeLink: aMetaLink forObject: anObject [
+	aMetaLink unlinkFromNode: self forObject: anObject
 ]
 
 { #category : #'*Reflectivity' }
@@ -165,8 +216,13 @@ RBProgramNode >> tagExecuted [
 ]
 
 { #category : #'*Reflectivity' }
-RBProgramNode >> watchpoint [
+RBProgramNode >> variableValueInContext: aContext [
+	^nil
+]
+
+{ #category : #'*Reflectivity' }
+RBProgramNode >> watch [
 	
-	self hasWatchpoint ifFalse:[^nil].
-	^(self afterLinks detect: [ :link | link metaObject class = Watchpoint ]) metaObject
+	self hasWatch ifFalse:[^nil].
+	^(self afterLinks detect: [ :link | link metaObject class = Watch ]) metaObject
 ]

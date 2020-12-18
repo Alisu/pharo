@@ -35,13 +35,9 @@ DisplayScreen class >> actualScreenDepth [
 { #category : #accessing }
 DisplayScreen class >> actualScreenSize [
 	"Delegates to active world because it can be something else than the one provided by the VM"
-	
-	"The method should be modified to use currentWorld, but the dependency is not possible.
-	We have to remodularize it."
-	self flag: #todo.
-	
-	ActiveWorld ifNil: [ ^ 0@0 ].
-	^ ActiveWorld actualScreenSize
+
+	self flag: #pharoTodo. "The method should be modified to use currentWorld, but the dependency is not possible. We have to remodularize it."
+	^ self currentWorld ifNil: [ 0 @ 0 ] ifNotNil: #actualScreenSize
 ]
 
 { #category : #'display box access' }
@@ -105,7 +101,7 @@ DisplayScreen class >> hostWindowSize: aPoint [
 DisplayScreen class >> hostWindowTitle: aString [ 
 	self 
 		primitiveWindowTitle: self hostWindowIndex 
-		string: (UTF8TextConverter default convertFromSystemString: aString)
+		string: aString utf8Encoded
 ]
 
 { #category : #'initialize-release' }
@@ -113,7 +109,7 @@ DisplayScreen class >> initialize [
 	| display |
 	display := self new.
 	display
-		setExtent: self actualScreenSize
+		setExtent: 0@0
 		depth: 32. 
 	Smalltalk globals at: #Display put: display.
 	display beDisplay.
@@ -134,16 +130,13 @@ DisplayScreen class >> primitiveDeferUpdates: aBoolean [
 
 { #category : #'host window access' }
 DisplayScreen class >> primitiveWindowIcon: id path: pathString [
-
 	<primitive: 'primitiveHostWindowIcon' module: 'HostWindowPlugin' error: ec>
-	(pathString isKindOf: AbstractFileReference)
-		ifTrue: [ ^ self primitiveWindowIcon: id path: pathString fullName ].
+	(pathString isKindOf: AbstractFileReference) ifTrue: [ ^ self primitiveWindowIcon: id path: pathString fullName ].
 	ec == #'bad argument'
-		ifTrue: [ pathString isString
-				ifFalse: [ ^ self error: 'The path should be a String' ].
-			pathString asFileReference exists
-				ifTrue: [ ^ self error: 'File existing but not found by the VM sorry, try another location...' "Not reproductible in the tests but can happen"]
-				ifFalse: [ ^ FileDoesNotExistException signalOnFile: pathString asFileReference ] ].
+		ifTrue: [ pathString isString ifFalse: [ ^ self error: 'The path should be a String' ].
+			^ pathString asFileReference
+				ifExists: [ self error: 'File existing but not found by the VM sorry, try another location...'	"Not reproductible in the tests but can happen" ]
+				ifAbsent: [ :file | FileDoesNotExistException signalOnFile: file ] ].
 	self primitiveFailed
 ]
 
@@ -162,6 +155,12 @@ DisplayScreen class >> primitiveWindowTitle: id string: titleString [
 { #category : #'host window access' }
 DisplayScreen class >> refreshHostWindowTitle [
 	Title ifNotNil: [ self hostWindowTitle: Title ]
+]
+
+{ #category : #'host window access' }
+DisplayScreen class >> resetTitle [
+	<script>
+	self hostWindowTitle: 'Pharo Virtual Machine! (', SmalltalkImage current imagePath ,')'
 ]
 
 { #category : #'host window access' }
@@ -186,13 +185,6 @@ DisplayScreen >> beDisplay [
 
 	<primitive: 102>
 	self primitiveFailed
-]
-
-{ #category : #other }
-DisplayScreen >> boundingBox [
-
-	ActiveWorld ifNil: [ ^ 0@0 corner: 0@0 ].
-	^ ActiveWorld bounds
 ]
 
 { #category : #deferring }
@@ -342,8 +334,9 @@ DisplayScreen >> fullscreen [
 { #category : #'screen managing' }
 DisplayScreen >> fullscreen: aBoolean [
 
-	self currentWorld worldState worldRenderer fullscreenMode: (LastScreenModeSelected := aBoolean)
-	
+	SystemAnnouncer uniqueInstance announce: (FullscreenAnnouncement new 
+		displayScreen: self;
+		fullscreen: (LastScreenModeSelected := aBoolean))
 ]
 
 { #category : #other }

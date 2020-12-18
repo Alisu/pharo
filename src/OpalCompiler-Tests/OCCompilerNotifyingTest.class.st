@@ -42,11 +42,11 @@ Class {
 
 { #category : #private }
 OCCompilerNotifyingTest >> enumerateAllSelections [
-	1 to: self numberOfSelections do: [:n |
-		self assert: (self evaluateSelectionNumber: n) == failure.
-		self assert: morph editor selection asString equals: (expectedErrors at: n).  
+	1 to: self numberOfSelections do: [ :n | 
+		self assert: (self evaluateSelectionNumber: n) identicalTo: failure.
+		self assert: morph editor selection asString equals: (expectedErrors at: n).
 		self assert: (expectedErrorPositions at: n) equals: morph editor startIndex.
-		morph editor cut].
+		morph editor cut ]
 ]
 
 { #category : #private }
@@ -140,7 +140,7 @@ OCCompilerNotifyingTest >> testEmptyCaseStatement [
 { #category : #testing }
 OCCompilerNotifyingTest >> testExpectedExpressionInBraceArray [
 	
-	self setUpForErrorsIn: '{ 1. 2 ` End of statement list encountered ->`3 }'.
+	self setUpForErrorsIn: '{ 1. 2 ` End of statement expected ->`3 }'.
 	self enumerateAllSelections.
 	self setUpForErrorsIn: '{ 1. 2. ` Variable or expression expected ->`| x | x}'.
 	self enumerateAllSelections.
@@ -148,7 +148,7 @@ OCCompilerNotifyingTest >> testExpectedExpressionInBraceArray [
 
 { #category : #testing }
 OCCompilerNotifyingTest >> testExtraneousStatementAfterAReturnInABlock [
-	self setUpForErrorsIn: '[ ^1 ` End of statement list encountered ->`2]'.
+	self setUpForErrorsIn: '[ ^1 ` End of statement expected ->`2]'.
 	self enumerateAllSelections.
 ]
 
@@ -228,14 +228,14 @@ OCCompilerNotifyingTest >> testMissingExpressionAfterAReturn [
 { #category : #testing }
 OCCompilerNotifyingTest >> testMissingMessageAfterACascade [
 	
-	self setUpForErrorsIn: 'nil yourself; ` Message expected ->`^ 2'.
+	self setUpForErrorsIn: 'nil yourself; ` Cascade message expected ->`^ 2'.
 	self enumerateAllSelections
 ]
 
 { #category : #testing }
 OCCompilerNotifyingTest >> testMissingPeriodSeparatorBetweenStatements [
 
-	self setUpForErrorsIn: '1 + 2 ` End of statement list encountered ->`^nil'.
+	self setUpForErrorsIn: '1 + 2 ` End of statement expected ->`^nil'.
 	self enumerateAllSelections.
 ]
 

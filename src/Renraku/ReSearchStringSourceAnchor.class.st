@@ -19,14 +19,6 @@ ReSearchStringSourceAnchor class >> entity: anEntity string: aString [
 		yourself
 ]
 
-{ #category : #'gt-inspector-extension' }
-ReSearchStringSourceAnchor >> gtInspectorAnchorIn: composite [
-	<gtInspectorPresentationOrder: 0>
-
-	(super gtInspectorAnchorIn: composite)
-		initialize: [ :p | p selectionInterval: self interval ]
-]
-
 { #category : #initialization }
 ReSearchStringSourceAnchor >> initializeEnitity: anEntiy searchString: aString [ 
 	
@@ -36,14 +28,16 @@ ReSearchStringSourceAnchor >> initializeEnitity: anEntiy searchString: aString [
 
 { #category : #accessing }
 ReSearchStringSourceAnchor >> interval [
+
 	| start tweekedSubstring |
-	
 	tweekedSubstring := self searchString isSymbol
-		ifTrue: [ self searchString keywords first ]
-		ifFalse: [ self searchString ].
-	
-	start := (sourceEntity definition indexOfSubCollection: tweekedSubstring startingAt: 1).
-	
+		                    ifTrue: [ self searchString keywords first ]
+		                    ifFalse: [ self searchString ].
+
+	start := sourceEntity definitionString
+		         indexOfSubCollection: tweekedSubstring
+		         startingAt: 1.
+
 	^ start to: start + tweekedSubstring size - 1
 ]
 

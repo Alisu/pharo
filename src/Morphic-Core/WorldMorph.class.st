@@ -10,7 +10,8 @@ Class {
 	#classVars : [
 		'AllowDropFiles',
 		'CursorOwnerWorld',
-		'ExtraWorldList'
+		'ExtraWorldList',
+		'ExtraWorldListMutex'
 	],
 	#classInstVars : [
 		'displayScaleFactor'
@@ -20,7 +21,10 @@ Class {
 
 { #category : #'extra worlds' }
 WorldMorph class >> addExtraWorld: aWorld [
-	ExtraWorldList := self extraWorldList copyWith: aWorld
+	ExtraWorldListMutex critical: [
+		ExtraWorldList := self extraWorldList copyWith: aWorld
+	]
+
 ]
 
 { #category : #accessing }
@@ -80,6 +84,7 @@ WorldMorph class >> displayScaleFactorSettingsOn: aBuilder [
 	(aBuilder range: #displayScaleFactor)
 		parent: #appearance;
 		order: 3;
+		default: 1;
 		label: 'Display scale factor';
 		description: 'Specify scale factor for UI elements. This setting does not affect defined font sizes.';
 		target: self;
@@ -89,15 +94,18 @@ WorldMorph class >> displayScaleFactorSettingsOn: aBuilder [
 
 { #category : #'initialize-release' }
 WorldMorph class >> doOneCycle [
-	self extraWorldList do: [:world |
-		ActiveHand := world activeHand.
-		world doOneCycle.
+	WorldState doDrawCycleWith: [
+		| extraWorldsToDraw |
+		extraWorldsToDraw := ExtraWorldListMutex critical: [ self extraWorldList ].
+		extraWorldsToDraw do: [:world |
+			world doOneCycle.
+		].
+
+		(self currentWorld isNotNil and: [(extraWorldsToDraw includes: self currentWorld) not]) ifTrue: [
+			self currentWorld doOneCycle.
+		]
 	].
 
-	(self currentWorld isNotNil and: [(self extraWorldList includes: self currentWorld) not]) ifTrue: [
-		self currentWorld doOneCycle.
-		ActiveHand := self currentWorld activeHand
-	]
 ]
 
 { #category : #'extra worlds' }
@@ -106,11 +114,17 @@ WorldMorph class >> extraWorldList [
 	^ ExtraWorldList
 ]
 
+{ #category : #'initialize-release' }
+WorldMorph class >> initialize [
+	ExtraWorldListMutex := Semaphore forMutualExclusion.
+]
+
 { #category : #'extra worlds' }
 WorldMorph class >> removeExtraWorld: aWorld [
-	ExtraWorldList := self extraWorldList copyWithout: aWorld.
-	CursorOwnerWorld == aWorld ifTrue: [ CursorOwnerWorld := nil ]
-	
+	ExtraWorldListMutex critical: [
+		ExtraWorldList := self extraWorldList copyWithout: aWorld.
+	].
+	CursorOwnerWorld == aWorld ifTrue: [ CursorOwnerWorld := nil ].	
 ]
 
 { #category : #cursor }
@@ -200,19 +214,13 @@ WorldMorph >> becomeActiveDuring: aBlock [
 	Note that this method does deliberately *not* use #ensure: to prevent
 	re-installation of the world on project switches."
 
-	| priorWorld priorHand priorEvent |
+	| priorWorld |
 	priorWorld := ActiveWorld.
-	priorHand := ActiveHand.
-	priorEvent := ActiveEvent.
 	ActiveWorld := self.
-	ActiveHand := self hands first.	"default"
-	ActiveEvent := nil.	"not in event cycle"
 	aBlock
 		on: Error
 		do: [ :ex | 
 			ActiveWorld := priorWorld.
-			ActiveEvent := priorEvent.
-			ActiveHand := priorHand.
 			ex pass ]
 ]
 
@@ -223,12 +231,6 @@ WorldMorph >> buildMetaMenu: evt [
 	self addStandardHaloMenuItemsTo: menu hand: evt hand.
 	^ menu
 
-]
-
-{ #category : #'project state' }
-WorldMorph >> canvas [
-
-	^ worldState canvas
 ]
 
 { #category : #stepping }
@@ -311,7 +313,7 @@ WorldMorph >> displayScaleFactor [
 { #category : #'world state' }
 WorldMorph >> displayWorld [
 
-	worldState displayWorld: self submorphs: submorphs
+	worldState displayWorld: self
 ]
 
 { #category : #'world state' }
@@ -322,31 +324,21 @@ WorldMorph >> displayWorldSafely [
 
 { #category : #'world state' }
 WorldMorph >> doOneCycle [
-	"see the comment in doOneCycleFor:"
-
-	worldState doOneCycleFor: self
+	self doOneCycleNow
 ]
 
 { #category : #'interaction loop' }
 WorldMorph >> doOneCycleNow [
 	"see the comment in doOneCycleNowFor:"
-	worldState doOneCycleNowFor: self.
+	worldState doOneCycleFor: self.
 
-]
-
-{ #category : #'world state' }
-WorldMorph >> doOneSubCycle [
-	"Like doOneCycle, but preserves activeHand."
-
-	worldState doOneSubCycleFor: self
 ]
 
 { #category : #geometry }
 WorldMorph >> extent: aPoint [
 	super extent: aPoint.
-	worldState viewBox
-		ifNotNil: [ 
-			worldState canvas: nil ]
+	worldState viewBox ifNotNil: [ 
+		worldState invalidate ]
 ]
 
 { #category : #'project state' }
@@ -367,6 +359,13 @@ WorldMorph >> fullRepaintNeeded [
 	self windowsSatisfying: [:w | w makeMeVisible. false]
 
 
+]
+
+{ #category : #'event handling' }
+WorldMorph >> fullscreenChanged: fullscreenAnnouncement [
+
+	self worldState worldRenderer fullscreenMode: fullscreenAnnouncement fullscreen
+	
 ]
 
 { #category : #'world state' }
@@ -397,9 +396,11 @@ WorldMorph >> initialize [
 	worldState := WorldState new.
  	super initialize.
 	
+	SystemAnnouncer uniqueInstance weak when: FullscreenAnnouncement send: #fullscreenChanged: to: self.	
+	
 	"subscribe to the tools registry to update the world menu when needed"
 	Smalltalk tools whenToolRegistered: [ :tool :toolName | WorldState defaultWorldMenu ].
-	Smalltalk tools whenToolUnregistered: [ :tool :toolName | WorldState defaultWorldMenu ]
+	Smalltalk tools whenToolUnregistered: [ :tool :toolName | WorldState defaultWorldMenu ].
 ]
 
 { #category : #'change reporting' }
@@ -425,12 +426,6 @@ WorldMorph >> isEasySelecting [
 	^ worldState isEasySelecting
 ]
 
-{ #category : #testing }
-WorldMorph >> isMainWorld [
-
-	^ World == self 
-]
-
 { #category : #'project state' }
 WorldMorph >> isStepping: aMorph [
 	^ worldState isStepping: aMorph
@@ -452,12 +447,6 @@ WorldMorph >> listOfSteppingMorphs [
 	^ worldState listOfSteppingMorphs
 
 "self currentWorld listOfSteppingMorphs"
-]
-
-{ #category : #'dropping/grabbing' }
-WorldMorph >> mouseDown: evt [
-	super mouseDown: evt.
-	self currentWindow ifNotNil: [ :topWindow | SystemWindow passivateTopWindow ]
 ]
 
 { #category : #printing }
@@ -499,13 +488,6 @@ WorldMorph >> removeHand: aHandMorph [
 	worldState removeHand: aHandMorph
 ]
 
-{ #category : #'world menu' }
-WorldMorph >> resetWorldMenu [
-	
-	worldState resetWorldMenu
-
-]
-
 { #category : #'world state' }
 WorldMorph >> restoreMorphicDisplay [
 
@@ -527,14 +509,9 @@ WorldMorph >> runStepMethods [
 
 ]
 
-{ #category : #'world state' }
-WorldMorph >> sleep [
-
-	worldState canvas ifNil: [^ self  "already called (clean this up)"].
-	Cursor normal show.	"restore the normal cursor"
-	worldState canvas: nil.		"free my canvas to save space"
-	self fullReleaseCachedState
-
+{ #category : #accessing }
+WorldMorph >> scaleFactor: newScaleFactor [
+	self setProperty: #scaleFactor toValue: newScaleFactor
 ]
 
 { #category : #stepping }
@@ -594,7 +571,7 @@ WorldMorph >> viewBox: newViewBox [
 	"I am now displayed within newViewBox; react."
 
 	(self viewBox isNil or: [ self viewBox extent ~= newViewBox extent ])
-		ifTrue: [ worldState canvas: nil ].
+		ifTrue: [ worldState invalidate ].
 
 	super viewBox: newViewBox.
 	worldState handsDo: [ :hand | hand releaseKeyboardFocus ].

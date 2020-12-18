@@ -1,6 +1,6 @@
 Class {
 	#name : #RBRefactoringChangeTest,
-	#superclass : #TestCase,
+	#superclass : #AbstractEnvironmentTestCase,
 	#instVars : [
 		'changes',
 		'workingEnvironment',
@@ -16,7 +16,7 @@ RBRefactoringChangeTest class >> packageNamesUnderTest [
 
 { #category : #mocking }
 RBRefactoringChangeTest >> changeMock [
-	^ Smalltalk globals at: #RBRefactoringChangeMock
+	^ testingEnvironment at: #RBRefactoringChangeMock
 ]
 
 { #category : #mocking }
@@ -73,7 +73,7 @@ RBRefactoringChangeTest >> perform: aChange do: aBlock [
 
 { #category : #mocking }
 RBRefactoringChangeTest >> removeMockClass [
-	Smalltalk globals removeClassNamed: #RBRefactoringChangeMock.
+	testingEnvironment removeClassNamed: #RBRefactoringChangeMock.
 ]
 
 { #category : #mocking }
@@ -120,11 +120,11 @@ RBRefactoringChangeTest >> testAddClassInstanceVariable [
 { #category : #tests }
 RBRefactoringChangeTest >> testAddClassInteractively [
 	| change |
-	change := changeFactory addClassDefinition: 'TestCase subclass: #' , self class name , '
+	change := changeFactory addClassDefinition: 'AbstractEnvironmentTestCase subclass: #' , self class name , '
 	instanceVariableNames: ''instVar''
 	classVariableNames: ''ClassVar''
 	poolDictionaries: ''PoolDict''
-	category: ''' , self class category , '''' for: self.
+	package: ''' , self class category , '''' for: self.
 	self assert: change controller equals: self.
 	self assert: change superclassName equals: self class superclass name.
 	self assert: change changeClassName equals: self class name.
@@ -173,7 +173,7 @@ RBRefactoringChangeTest >> testAddClassTraitPattern [
 	
 	self exampleTraits do: [ :trait |
 		| change |
-		change := changes defineClass: trait classTrait definition.
+		change := changes defineClass: (ClassDefinitionPrinter oldPharo for: trait classTrait) definitionString.
 		self assert: (change isKindOf: RBAddClassTraitChange).
 		self assert: change changeClassName equals: trait name.
 		self universalTestFor: change ]
@@ -208,7 +208,7 @@ RBRefactoringChangeTest >> testAddMetaclassPattern [
 	self exampleClasses do: [ :class |
 		(class isObsolete or: [ class superclass notNil and: [ class superclass isObsolete ] ]) ifFalse: [  
  		| change |
-		change := changes defineClass: class class definition.
+		change := changes defineClass: class class definitionString.
 		self assert: (change isKindOf: RBAddMetaclassChange).
 		self assert: change changeClassName equals: class name.
 		self assert: change classInstanceVariableNames equals: class class instVarNames.
@@ -232,7 +232,7 @@ RBRefactoringChangeTest >> testAddTraitPattern [
 	
 	self exampleTraits do: [ :trait |
 		| change |
-		change := changes defineClass: trait definition.
+		change := changes defineClass: trait definitionString.
 		self assert: (change isKindOf: RBAddTraitChange).
 		self assert: change changeClassName equals: trait name.
 		self assert: change category equals: trait category.
@@ -325,7 +325,7 @@ RBRefactoringChangeTest >> testPerformAddRemoveClass [
 	instanceVariableNames: ''''
 	classVariableNames: ''''
 	poolDictionaries: ''''
-	category: ''' , self class category , ''''.
+	package: ''' , self class category , ''''.
 	self perform: change do: [
 		self assert: (workingEnvironment  hasClassNamed: change changeClassName).
 		self assert: change definedClass name equals: change changeClassName.
@@ -349,7 +349,7 @@ RBRefactoringChangeTest >> testPerformAddRemoveClassInteractively [
 	instanceVariableNames: ''''
 	classVariableNames: ''''
 	poolDictionaries: ''''
-	category: ''' , self class category , '''' for: self.
+	package: ''' , self class category , '''' for: self.
 	self perform: change do: [ 
 		self assert: (workingEnvironment hasClassNamed: change changeClassName).
 		self assert: change definedClass name equals: change changeClassName.

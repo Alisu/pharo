@@ -1,9 +1,9 @@
 "
-RBPatternMessageNode is a RBMessageNode that will match other message nodes without their selectors being equal. 
+RBPatternMessageNode is an RBMessageNode that will match other message nodes without their selectors being equal. 
 
 Instance Variables:
 	isCascadeList	<Boolean>	are we matching a list of message nodes in a cascaded message
-	isList	<Boolean>	are we matching each keyword or matching all keywords together (e.g., `keyword1: would match a one argument method whereas `@keywords: would match 0 or more arguments)
+	isList	<Boolean>	are we matching each keyword or matching all keywords together (e.g., `keyword1: would match a one-argument method whereas `@keywords: would match 0 or more arguments)
 "
 Class {
 	#name : #RBPatternMessageNode,
@@ -18,17 +18,17 @@ Class {
 { #category : #'instance creation' }
 RBPatternMessageNode class >> receiver: aValueNode selector: aSelector keywordsPositions: positionList arguments: valueNodes [
 
-	^aSelector isPatternVariable
+	^aSelector value asSymbol isPatternVariable
 		ifTrue: 
 			[super
 				receiver: aValueNode
-				selector: aSelector 
+				selector: aSelector
 				keywordsPositions: positionList asIntegerArray
 				arguments: valueNodes]
 		ifFalse: 
 			[RBMessageNode 
 				receiver: aValueNode
-				selector: aSelector 
+				selector: aSelector
 				keywordsPositions: positionList asIntegerArray
 				arguments: valueNodes]
 ]

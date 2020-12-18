@@ -15,7 +15,7 @@ Class {
 		'processes',
 		'model'
 	],
-	#category : #'Morphic-Widgets-Tabs'
+	#category : #'Morphic-Widgets-Tabs-Morphs'
 }
 
 { #category : #'private-contents' }
@@ -181,7 +181,7 @@ TabManagerMorph >> deleteSelectedTabs [
 
 { #category : #drawing }
 TabManagerMorph >> drawLinesOn: aCanvas [
-	self flag: #TODO. "this method, I don't know what's is for."
+	self flag: #pharoTodo. "this method, I don't know what's is for."
 	"aCanvas
 		line: self topLeft
 		to: self bottomLeft

@@ -194,6 +194,11 @@ ThreadSafeTranscript >> printOn: aStream [
 	aStream nextPutAll: 'Transcript'
 ]
 
+{ #category : #accessing }
+ThreadSafeTranscript >> selectedClassOrMetaClass [
+	^ nil
+]
+
 { #category : #updating }
 ThreadSafeTranscript >> shoutAboutToStyle: aPluggableShoutMorphOrView [ 
 	^ false
@@ -257,4 +262,10 @@ ThreadSafeTranscript >> tab [
 ThreadSafeTranscript >> title [
 
 	^ 'Transcript'
+]
+
+{ #category : #'as yet unclassified' }
+ThreadSafeTranscript >> variableBindings [
+
+	^ Dictionary new
 ]

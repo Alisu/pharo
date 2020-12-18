@@ -3,7 +3,7 @@ I contain tests that validate the integrity of the system.
 "
 Class {
 	#name : #ReleaseTest,
-	#superclass : #TestCase,
+	#superclass : #AbstractEnvironmentTestCase,
 	#category : #'ReleaseTests-Release'
 }
 
@@ -16,22 +16,6 @@ ReleaseTest class >> actualProcesses [
 ReleaseTest class >> defaultTimeLimit [
 
 	^ 1 minute
-]
-
-{ #category : #accessing }
-ReleaseTest class >> knownProcesses [
-	"Return a dynamic list of know processes"
-	
-	"(self actualProcesses difference: self knownProcesses) do: [ :each | each suspend; terminate ]."
-	
-	^ {
-		Processor activeProcess.	
-		InputEventFetcher default fetcherProcess.
-		WeakArray runningFinalizationProcess.
-		Processor backgroundProcess.
-		SmalltalkImage current lowSpaceWatcherProcess.
-		UIManager default uiProcess.
-		Delay schedulingProcess } asSet
 ]
 
 { #category : #accessing }
@@ -82,21 +66,43 @@ ReleaseTest >> hasStartUpOrShutDownMethod: aClass [
 
 { #category : #accessing }
 ReleaseTest >> knownProcesses [
-	^ self class knownProcesses
+	"Return a dynamic list of know processes"
+	
+	"(self actualProcesses difference: self knownProcesses) do: [ :each | each suspend; terminate ]."
+	
+	^ {
+		Processor activeProcess.	
+		Processor backgroundProcess.
+		InputEventFetcher default fetcherProcess.
+		WeakArray runningFinalizationProcess.
+		SmalltalkImage current lowSpaceWatcherProcess.
+		MorphicUIManager uiProcess.
+		CurrentExecutionEnvironment value watchDogProcess.
+		Delay schedulingProcess.
+		TKTWatchDog onDuty pharoProcess.
+		TFCallbackQueue uniqueInstance callbackProcess } asSet
 ]
 
 { #category : #tests }
 ReleaseTest >> testAllClassPoolBindingAreClassVariables [
 	| wrong |
 	wrong := OrderedCollection new.
-	Smalltalk globals allClasses do: [ :class | wrong addAll: (class classVariables reject: [ :each | each isKindOf: ClassVariable ]) ].
+	testingEnvironment allClasses do: [ :class | wrong addAll: (class classVariables reject: [ :each | each isKindOf: ClassVariable ]) ].
+	self assertEmpty: wrong
+]
+
+{ #category : #tests }
+ReleaseTest >> testAllClassPoolBindingHaveDefiningClass [
+	| wrong |
+	wrong := OrderedCollection new.
+	testingEnvironment allClasses do: [ :class | wrong addAll: (class classVariables reject: [ :each | each definingClass == class ]) ].
 	self assertEmpty: wrong
 ]
 
 { #category : #tests }
 ReleaseTest >> testAllGlobalBindingAreGlobalVariables [
 	| wrong |
-	wrong := Smalltalk globals associations reject: [ :each | each isKindOf: GlobalVariable ].
+	wrong := testingEnvironment associations reject: [ :each | each isKindOf: GlobalVariable ].
 	self assertEmpty: wrong
 ]
 
@@ -104,7 +110,7 @@ ReleaseTest >> testAllGlobalBindingAreGlobalVariables [
 ReleaseTest >> testExplicitRequirementMethodsShouldBeImplementedInTheirUsers [
 	"If a class is using a trait with an explicit requirement method, this class should implement the method"
 	
-	self assertValidLintRule: RBExplicitRequirementMethodsRule new
+	self assertValidLintRule: ReExplicitRequirementMethodsRule new
 	
 ]
 
@@ -143,11 +149,11 @@ ReleaseTest >> testKeyClassesArePresentInStartupList [
 	| keyClasses registeredHandlers |
 	keyClasses := #(#Delay #ProcessorScheduler #Stdio #OSPlatform #UUIDGenerator #DiskStore #WeakArray #BasicCommandLineHandler).
 	registeredHandlers := SessionManager default startupList
-		collect: #handledId.
+		collect: [:each | each handledId].
 	
 	keyClasses do:	[ :className |
 		self assert: (registeredHandlers includes: className).
-		self assert: (self hasStartUpOrShutDownMethod: (Smalltalk globals at: className)) ].
+		self assert: (self hasStartUpOrShutDownMethod: (testingEnvironment at: className)) ].
 	
 	self assert: (registeredHandlers includes: #UIManagerSessionHandler).
 ]
@@ -163,7 +169,44 @@ ReleaseTest >> testLayoutIntegrity [
 ReleaseTest >> testLocalMethodsOfTheClassShouldNotBeRepeatedInItsTraits [
 	"If a class is using a trait with an explicit requirement method, this class should implement the method"
 	
-	self assertValidLintRule: RBLocalMethodsSameThanTraitRule new withExceptions: #(RBSmalllintTestLocalMethodsSameThanTraitObject).
+	self assertValidLintRule: ReLocalMethodsSameThanTraitRule new withExceptions: #(RBSmalllintTestLocalMethodsSameThanTraitObject).
+]
+
+{ #category : #tests }
+ReleaseTest >> testManifestNamesAccordingToPackageNames [
+	"Make sure package name and manifest name are in synch"
+	
+	|manifestClasses actualManifestNames expectedManifestNames |
+	manifestClasses := self class environment allClasses select: [:each | each isManifest ].
+	actualManifestNames := (manifestClasses collect: [:each | each name ]) sorted.
+	expectedManifestNames := (manifestClasses collect: [:each | TheManifestBuilder manifestClassNameFor: each package name ]) sorted.
+	
+	self 
+		assert: actualManifestNames size 
+		equals: expectedManifestNames size.
+	
+	actualManifestNames do: [:each |
+		 self assert: (expectedManifestNames includes: each)] 
+]
+
+{ #category : #tests }
+ReleaseTest >> testMethodsContainNoHalt [
+
+	| methods |
+	methods := SystemNavigation new allMethods select: [ :method | method containsHalt ].
+	"these methods are using halt for testing something"
+	methods := methods reject: [ :method | 
+		           method hasPragmaNamed: #haltOrBreakpointForTesting ].
+	"these methods are implementing halt, we are not interested"
+	methods := methods reject: [ :method | 
+		           method hasPragmaNamed: #debuggerCompleteToSender ].
+
+	"there should be no method left"
+	self assert: methods isEmpty description: [ 
+		String streamContents: [ :stream | 
+			stream
+				nextPutAll: 'Found methods with halt';
+				print: methods ] ]
 ]
 
 { #category : #tests }
@@ -231,6 +274,18 @@ ReleaseTest >> testPharoVersionFileExists [
 		equals: SystemVersion current major asString,  SystemVersion current minor asString
 ]
 
+{ #category : #'tests - packages - manifests' }
+ReleaseTest >> testProperManifestClasses [
+
+	|manifests|
+	manifests := self class environment allClasses select: [:each | each isManifest ].
+	self assert: (manifests allSatisfy: [:each | each inheritsFrom: PackageManifest ]).
+	self assert: (manifests allSatisfy: [:each | each name beginsWith: 'Manifest' ]).
+
+
+ 
+]
+
 { #category : #'tests - rpackage' }
 ReleaseTest >> testRPackageOrganizer [
 	"Ensure other tests temporary created organizers are collected"
@@ -249,10 +304,9 @@ ReleaseTest >> testRPackageOrganizer [
 { #category : #tests }
 ReleaseTest >> testShouldFileLocatorBeBeforeSystemSettingsPersistenceInStartupList [
 	"This test documents issue https://pharo.manuscript.com/f/cases/17721"
+	
 	| startupList settingsIndex |
-	
-	startupList := (SessionManager default startupList collect: #handledId).
-	
+	startupList := (SessionManager default startupList collect: [:each | each handledId]).
 	settingsIndex := startupList indexOf: #SystemSettingsPersistence.
 	settingsIndex > 0
 		ifTrue: [ self should: [ (startupList indexOf: #FileLocator) < (startupList indexOf: #SystemSettingsPersistence) ] ]
@@ -263,9 +317,7 @@ ReleaseTest >> testShouldWorldMorphBeAfterFontClassesInStartupList [
 	"This test documents issue https://pharo.manuscript.com/f/cases/17834"
 	"The Startup of he WorldMorph is now done in the UIManagerHandler"
 	| startupList |
-	
-	startupList := (SessionManager default startupList collect: #handledId).
-	
+	startupList := (SessionManager default startupList collect: [:each | each handledId]).
 	#(StrikeFont LogicalFont FreeTypeSettings FreeTypeCache FT2Handle) 
 		do: [ :fontClass |
 			self should: [ (startupList indexOf: #UIManagerSessionHandler) > (startupList indexOf: #SystemSettingsPersistence) ] ]
@@ -273,7 +325,7 @@ ReleaseTest >> testShouldWorldMorphBeAfterFontClassesInStartupList [
 
 { #category : #tests }
 ReleaseTest >> testTestCasesEndsWithTestOrTestCase [
-	self assertValidLintRule: ReTestClassNameShouldEndWithTest new
+	self assertValidLintRule: ReTestClassNameShouldEndWithTestRule new
 	
 ]
 
@@ -311,12 +363,16 @@ ReleaseTest >> testUnknownProcesses [
 	| unknownProcesses |
 	unknownProcesses := self actualProcesses difference: self knownProcesses.
 	self 
-		assert: unknownProcesses size <=2
+		assert: unknownProcesses isEmpty
 		description: (String streamContents: [ :out |
 			out << 'Found unknown processes: '.
 			unknownProcesses 
-				do: [ :each | out print: each ] 
-				separatedBy: [ out << ', ' ] ])
+				do: [ :each | 
+					out 
+						print: each name;
+						print: ':';
+						print: each ] 
+				separatedBy: [ out << String crlf ] ])
 ]
 
 { #category : #'tests - rpackage' }

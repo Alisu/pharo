@@ -1,3 +1,6 @@
+"
+I'm a Spec2 backend for the morphic UI framework. See class comment of class `SpApplicationBackend` for more details
+"
 Class {
 	#name : #SpMorphicBackend,
 	#superclass : #SpApplicationBackend,
@@ -16,13 +19,15 @@ SpMorphicBackend >> adapterBindingsClass [
 	^ SpMorphicAdapterBindings
 ]
 
-{ #category : #'as yet unclassified' }
-SpMorphicBackend >> defer: aBlockClosure [ 
-	UIManager default defer: aBlockClosure.
+{ #category : #'deferred message' }
+SpMorphicBackend >> defer: aBlock [
+
+	UIManager default defer: aBlock
 ]
 
-{ #category : #'private notifying' }
+{ #category : #'private - notifying' }
 SpMorphicBackend >> notifyError: aSpecNotification [
+
 	GrowlMorph
 		openWithLabel: 'Error'
 		contents: aSpecNotification message
@@ -30,7 +35,7 @@ SpMorphicBackend >> notifyError: aSpecNotification [
 		labelColor: GrowlMorph theme textColor
 ]
 
-{ #category : #'private notifying' }
+{ #category : #'private - notifying' }
 SpMorphicBackend >> notifyInfo: aSpecNotification [
 
 	GrowlMorph 
@@ -41,16 +46,14 @@ SpMorphicBackend >> notifyInfo: aSpecNotification [
 { #category : #'ui dialogs' }
 SpMorphicBackend >> selectDirectoryTitle: aString [
 
-	^ UIManager default 
-		chooseDirectory: aString
-		path: ''
+	^ UIManager default chooseDirectory: aString path: ''
 ]
 
 { #category : #'ui dialogs' }
 SpMorphicBackend >> selectFileTitle: aString [
 
-	^ UIManager default 
-		chooseExistingFileReference: aString
-		extensions: nil 
-		path: ''
+	^ UIManager default
+		  chooseExistingFileReference: aString
+		  extensions: nil
+		  path: ''
 ]

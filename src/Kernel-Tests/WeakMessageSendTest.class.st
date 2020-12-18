@@ -7,11 +7,17 @@ Class {
 	#category : #'Kernel-Tests-Objects'
 }
 
+{ #category : #coverage }
+WeakMessageSendTest >> classToBeTested [
+	
+	^ WeakMessageSend 
+]
+
 { #category : #tests }
 WeakMessageSendTest >> testCollectArguments [
 
 	"Fogbugz issue 18127"
-	"Test is passed if no primitve fails"
+	"Test is passed if no primitive fails"
 	
 	| msg rcvr c|
 	
@@ -81,13 +87,8 @@ WeakMessageSendTest >> testReceiverWithGC [
 
 { #category : #tests }
 WeakMessageSendTest >> testTwoArguments [
-
 	| m |
-	m := WeakMessageSend
-		receiver: Array
-		selector: #with:with:
-		arguments: { 1 . 2 }.
+	m := WeakMessageSend receiver: Array selector: #with:with: arguments: {1 . 2}.
 	Smalltalk garbageCollectMost.
-	self assert: (m value = { 1 . 2 }).
-
+	self assert: m value equals: {1 . 2}
 ]

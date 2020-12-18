@@ -1,6 +1,6 @@
 Class {
 	#name : #RBTransformationTest,
-	#superclass : #TestCase,
+	#superclass : #AbstractEnvironmentTestCase,
 	#instVars : [
 		'manager',
 		'model'
@@ -15,7 +15,7 @@ RBTransformationTest >> abstractVariableTestData [
 	classes := #(#Bar #Foo) 
 		inject: OrderedCollection new 
 		into: [ :sum :each | 
-			Smalltalk globals at: each ifPresent: [ :class | 
+			testingEnvironment at: each ifPresent: [ :class | 
 				sum add: class; add: class class ].
 			sum ].
 	classEnvironment := RBClassEnvironment classes: classes.
@@ -79,7 +79,7 @@ RBTransformationTest >> abstractVariableTestData [
 { #category : #mocking }
 RBTransformationTest >> changeMock [
 
-	^ Smalltalk globals at: #RBRefactoringChangeMock
+	^ testingEnvironment at: #RBRefactoringChangeMock
 ]
 
 { #category : #mocking }
@@ -134,7 +134,7 @@ RBTransformationTest >> proceedThroughWarning: aBlock [
 { #category : #mocking }
 RBTransformationTest >> removeMockClass [
 
-	Smalltalk globals removeClassNamed: #RBRefactoringChangeMock.
+	testingEnvironment removeClassNamed: #RBRefactoringChangeMock.
 ]
 
 { #category : #running }
@@ -167,16 +167,14 @@ RBTransformationTest >> testAPI [
 	incompleteTransformations := RBTransformation allSubclasses
 		select: [ :each | 
 			| selectors |
-			selectors := each methods collect: #selector.
-
+			selectors := each methods collect: [:m | m selector].
 			each subclasses isEmpty and: [ (selectors includes: #privateTransform) not and: [ (selectors includes: #storeOn:) not ] ] ].
 	self assertEmpty: incompleteTransformations.
 
 	incompleteTransformations := RBCompositeTransformation allSubclasses
 		select: [ :each | 
 			| selectors |
-			selectors := each methods collect: #selector.
-
+			selectors := each methods collect: [:m | m selector].
 			each subclasses isEmpty and: [ (selectors includes: #buildTransformations) not ] ].
 	self assertEmpty: incompleteTransformations
 ]

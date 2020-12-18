@@ -1,69 +1,31 @@
 "
-I am the adapter used to bridge a TextPresenter and a PluggableTextMorph
+I am the adapter used to bridge a TextPresenter and a RubScrolledTextMorph for regular text
 "
 Class {
 	#name : #SpMorphicTextAdapter,
-	#superclass : #SpAbstractMorphicAdapter,
-	#traits : 'TViewModel',
-	#classTraits : 'TViewModel classTrait',
-	#instVars : [
-		'selection'
-	],
+	#superclass : #SpMorphicBaseTextAdapter,
 	#category : #'Spec2-Adapters-Morphic-Base'
 }
 
-{ #category : #'spec protocol' }
-SpMorphicTextAdapter >> accept [
-	"We use RubScrolledTextMorph>>#acceptContents but we keep accept as method name for compatibility"
-	self widgetDo: [ :w | w acceptContents ]
+{ #category : #initialization }
+SpMorphicTextAdapter >> addFocusRotationKeyBindings [
+	"Text areas needs to be able to process tab. Cancel the binding."
 ]
 
-{ #category : #'widget API' }
-SpMorphicTextAdapter >> accept: aText notifying: aNotifyier [
+{ #category : #'protocol-shortcuts' }
+SpMorphicTextAdapter >> bindKeyCombination: aShortcut toAction: aBlock [ 
 
-	self model accept: aText notifying: aNotifyier
-]
-
-{ #category : #accessing }
-SpMorphicTextAdapter >> acceptAllowed [
-	^self widget editingMode acceptAllowed
-]
-
-{ #category : #accessing }
-SpMorphicTextAdapter >> announcer [
-	^ self model announcer
-
-	
-]
-
-{ #category : #'widget API' }
-SpMorphicTextAdapter >> askBeforeDiscardingEdits [
-
-	^ self model askBeforeDiscardingEdits
-]
-
-{ #category : #'spec protocol' }
-SpMorphicTextAdapter >> askBeforeDiscardingEdits: aBoolean [
-	self widget askBeforeDiscardingEdits: aBoolean
-]
-
-{ #category : #'widget API' }
-SpMorphicTextAdapter >> autoAccept [
-
-	^ self model autoAccept
-]
-
-{ #category : #'widget API' }
-SpMorphicTextAdapter >> autoAccept: aBoolean [
-
-	^ self model autoAccept: aBoolean
+	self widgetDo: [ :w | 
+		w textArea
+			bindKeyCombination: aShortcut 
+			toAction: aBlock ]
 ]
 
 { #category : #factory }
 SpMorphicTextAdapter >> buildWidget [
 	| newWidget |
-	self flag: #pharo7.	"When support for P7 will be dropped, remove this compatibility hack."
-	newWidget := ((self class environment at: #SpRubScrolledTextMorph ifAbsent: [ RubScrolledTextMorph ]) on: self)
+	
+	newWidget := (RubScrolledTextMorph on: self)
 		getTextSelector: #getText;
 		setTextSelector: #accept:notifying:;
 		getSelectionSelector: #readSelection;
@@ -73,193 +35,181 @@ SpMorphicTextAdapter >> buildWidget [
 		beWrapped;
 		enabled: self enabled;
 		askBeforeDiscardingEdits: self askBeforeDiscardingEdits;
-		autoAccept: self autoAccept;
+		autoAccept: true;
 		vResizing: #spaceFill;
 		hResizing: #spaceFill;
 		setBalloonText: self help;
 		dragEnabled: self dragEnabled;
 		dropEnabled: self dropEnabled;
 		registerScrollChanges: #scrollValueChanged:;
+		hScrollbarShowWhenNeeded;
 		yourself.
+	
+	self setEditable: self presenter isEditable to: newWidget.
 	self setEditingModeFor: newWidget.
-	self model additionalKeyBindings ifNotNil: [ :bindings | bindings keysAndValuesDo: [ :shortcut :action | newWidget bindKeyCombination: shortcut toAction: action ] ].
-	self presenter whenTextChangedDo: [ :text | newWidget setText: text ].
-	self presenter whenPlaceholderChangedDo: [ :text | newWidget ghostText: text ].
+	self setText: self presenter text to: newWidget.
+
+	self setWrapWord: self presenter isWrapWord to: newWidget.	
+	self presenter whenTextChangedDo: [ :text | 
+		self setText: text to: newWidget ].
+	self presenter whenSelectionChangedDo: [ :selectionInterval | 
+		self selectionInterval: selectionInterval ].
+	self presenter whenPlaceholderChangedDo: [ :text | 
+		self setGhostText: text to: newWidget ].
+	self presenter whenEditableChangedDo: [ :value | 
+		self setEditable: value to: newWidget ].
+	self presenter whenWrapWordChangedDo: [ :value | 
+		self setWrapWord: value to: newWidget ].
+	
 	^ newWidget
 ]
 
-{ #category : #'spec protocol' }
-SpMorphicTextAdapter >> canChangeText [
-	^ self widget textArea canChangeText
-]
-
-{ #category : #'undo-redo' }
-SpMorphicTextAdapter >> clearUndoManager [
-	self widget textArea editingState clearUndoManager: nil
-]
-
 { #category : #'widget API' }
-SpMorphicTextAdapter >> clearUserEditFlag [
+SpMorphicTextAdapter >> codePaneMenu: aMenu shifted: shifted [
 
-	self model text: self getText.
-	self changed: #clearUserEdits
-]
-
-{ #category : #'widget API' }
-SpMorphicTextAdapter >> codePaneMenu: aMenu shifted: shifted [ 
 	| menuPresenter |
-
-	menuPresenter := self model contextMenu.
-	menuPresenter ifNil: [ ^ nil ].
+	menuPresenter := self model contextMenu value
+		                 ifNotNil: [ :contextMenu | contextMenu ]
+		                 ifNil: [ SpMenuPresenter new ].
+	self presenter hasEditionContextMenu ifTrue: [ 
+		self presenter editionContextMenu menuGroups do: [ :each | 
+			menuPresenter addMenuGroup: each ] ].
 	^ SpBindings
-		value: self model application adapterBindings
-		during: [ menuPresenter value buildWithSpec ]
+		  value: self model application adapterBindings
+		  during: [ menuPresenter value buildWithSpec ]
+]
+
+{ #category : #commands }
+SpMorphicTextAdapter >> copyText [
+
+	self editor copySelection
 ]
 
 { #category : #'widget API' }
-SpMorphicTextAdapter >> font: aFont [
-	self widgetDo: [ :w | w font: aFont ]
+SpMorphicTextAdapter >> cursorPosition [
+
+	^ self widgetDo: [ :w |
+		w textArea selectionStart
+			ifNotNil: [ :sel | self linePositionOf: sel ] ]
 ]
 
 { #category : #'widget API' }
-SpMorphicTextAdapter >> getText [
+SpMorphicTextAdapter >> cursorPositionIndex: index [ 
 
-	^ self model text
+	self widgetDo: [ :w | ^ w textArea editor pointIndex: index ]
 ]
 
-{ #category : #'spec protocol' }
-SpMorphicTextAdapter >> hasEditingConflicts: aBoolean [
- 
-	self widgetDo: [ :w | w hasEditingConflicts: aBoolean ]
-]
+{ #category : #commands }
+SpMorphicTextAdapter >> cutText [
 
-{ #category : #'spec protocol' }
-SpMorphicTextAdapter >> hasUnacceptedEdits: aBoolean [
-
-	self model hasUnacceptedEdits: aBoolean
-]
-
-{ #category : #'spec protocol' }
-SpMorphicTextAdapter >> insert: aString at: positionIndex [
-	| text |
-
-	text := self getText.
-	text := 
-		(text copyFrom: 1 to: positionIndex), 
-		aString, 
-		(text copyFrom: positionIndex + 1 to: text size).
-
-	self model text: text
-]
-
-{ #category : #'spec protocol' }
-SpMorphicTextAdapter >> notify: errorMessage at: position in: sourceCode [
-
-	self flag: #TOMOVE.
-	self widgetDo: [ :w | w notify: errorMessage at: position in: sourceCode ]
-]
-
-{ #category : #'spec protocol' }
-SpMorphicTextAdapter >> pendingText [
-
-	^ self widgetDo: [ :w | w text ]
-]
-
-{ #category : #'spec protocol' }
-SpMorphicTextAdapter >> pendingText: aText [
-
-	self widgetDo: [ :w | 
-		w setText: aText.
-		w hasUnacceptedEdits: true ]
-]
-
-{ #category : #'widget API' }
-SpMorphicTextAdapter >> placeholder [
-	^ self model placeholder
-]
-
-{ #category : #'widget API' }
-SpMorphicTextAdapter >> placeholder: aText [
-	^ self model placeholder: aText
-]
-
-{ #category : #'widget API' }
-SpMorphicTextAdapter >> readSelection [
-
-	^ self model readSelection
-]
-
-{ #category : #'widget API' }
-SpMorphicTextAdapter >> scrollValueChanged: aValue [
-
-	self model scrollValue: aValue step
-]
-
-{ #category : #'spec protocol' }
-SpMorphicTextAdapter >> selectAll [
-	self widgetDo: [ :w | w selectAll ]
-]
-
-{ #category : #'spec protocol' }
-SpMorphicTextAdapter >> selectFrom: nodeStart to: nodeStop [
-	self widget selectFrom: nodeStart to: nodeStop
-]
-
-{ #category : #'spec protocol' }
-SpMorphicTextAdapter >> selectLine [
-
-	self widgetDo: [ :w |
-		w textArea editor selectLine ]
-
-]
-
-{ #category : #accessing }
-SpMorphicTextAdapter >> selection [
-	
-	^ selection
-]
-
-{ #category : #'spec protocol' }
-SpMorphicTextAdapter >> selectionInterval [
-	^ self widget selectionInterval 
+	self editor cut
 ]
 
 { #category : #private }
-SpMorphicTextAdapter >> setEditingModeFor: textArea [
-	
-	textArea beForPlainText
+SpMorphicTextAdapter >> editor [
+
+	^ widget textArea editor
 ]
 
-{ #category : #'spec protocol' }
-SpMorphicTextAdapter >> setHasUnacceptedEdits: aBoolean [
+{ #category : #private }
+SpMorphicTextAdapter >> eventHandlerReceiver: aWidget [
 
-	self widgetDo: [ :w | w basicHasUnacceptedEdits: aBoolean ]
+	^ aWidget textArea
 ]
 
-{ #category : #'widget API' }
-SpMorphicTextAdapter >> setScrollValue: aValue [
-	self
-		widgetDo: [ :w | 
-			w scrollPane
-				hScrollbarValue: aValue x;
-				vScrollbarValue: aValue y;
-				updateScrollbars ]
+{ #category : #commands }
+SpMorphicTextAdapter >> findNextText [
+
+	self editor findAgain
 ]
 
-{ #category : #'widget API' }
-SpMorphicTextAdapter >> setSelection: interval [
+{ #category : #commands }
+SpMorphicTextAdapter >> findText [
 
-	selection := interval
+	self editor find
 ]
 
-{ #category : #'spec protocol' }
-SpMorphicTextAdapter >> setSelectionFromModel: aSelection [
+{ #category : #private }
+SpMorphicTextAdapter >> linePositionOf: sel [
 
-	self widget ifNotNil: [ :w | w setSelection: aSelection ]
+	| textLine linePosition |
+	textLine := sel textLine.
+	linePosition := sel stringIndex - textLine first + 1.
+	^ linePosition @ textLine lineNumber
 ]
 
-{ #category : #'widget API' }
-SpMorphicTextAdapter >> wantsVisualFeedback [
+{ #category : #commands }
+SpMorphicTextAdapter >> pasteText [
 
-	^ self model wantsVisualFeedback
+	self editor paste
+]
+
+{ #category : #styling }
+SpMorphicTextAdapter >> presenterStyles [
+	"The presenters in the style"
+
+	^ self presenter scrollBarStyles, self presenter styles 
+]
+
+{ #category : #commands }
+SpMorphicTextAdapter >> selectAndPasteText [
+
+	self editor pasteRecent
+]
+
+{ #category : #private }
+SpMorphicTextAdapter >> setEditable: aBoolean to: aWidget [
+
+	aWidget textArea readOnly: aBoolean not
+]
+
+{ #category : #private }
+SpMorphicTextAdapter >> setGhostText: text to: aWidget [
+
+	aWidget ghostText: text
+]
+
+{ #category : #private }
+SpMorphicTextAdapter >> setText: text to: aWidget [
+
+	aWidget setText: text.
+	self updateExtentPropagationOf: text on: aWidget
+
+]
+
+{ #category : #private }
+SpMorphicTextAdapter >> setWrapWord: aBoolean to: aWidget [
+
+	aBoolean 
+		ifTrue: [ aWidget beWrapped ]
+		ifFalse: [ aWidget beNotWrapped ]
+]
+
+{ #category : #private }
+SpMorphicTextAdapter >> updateExtentPropagationOf: string on: aWidget [
+	| stringMorph width height |
+
+	(self presenter isPropagateNaturalWidth 
+		or: [ self presenter isPropagateNaturalHeight ])
+		ifFalse: [ ^ self ].
+
+	"This is an incredible ugly hack because what should be the correct way of doing it: 
+	 Font>>widthOfString: does not works (because it fails to take into account kerning).
+	 Why it works on the Editing area is a mystery. 
+	 BUT! It does not works for monospaced fonts! (again, no idea why)"
+	stringMorph := RubEditingArea new 
+		font: aWidget font;
+		updateTextWith: string asString.
+
+	width := stringMorph width + 12" min: self currentWorld width / 3".
+	self presenter isPropagateNaturalWidth 
+		ifTrue: [ aWidget width: width ].
+
+	self presenter isPropagateNaturalHeight 
+		ifTrue: [ 
+			height := ((stringMorph
+				beWrapped;
+				width: width;
+				yourself) height + 2)" min: self currentWorld height / 3". 
+			aWidget height: height ]
 ]

@@ -14,5 +14,10 @@ ManifestSystemSupport class >> ignoredDependencies [
 
 { #category : #'meta-data - dependency analyser' }
 ManifestSystemSupport class >> manuallyResolvedDependencies [
-	^ #(#'Collections-Support' #'System-Localization' #'System-Settings-Core' #'System-Platforms')
+	^ #(#'Collections-Support' #'System-Settings-Core' #'System-Platforms')
+]
+
+{ #category : #'code-critics' }
+ManifestSystemSupport class >> ruleClassNameInSelectorRuleV1FalsePositive [
+	^ #(#(#(#RGMethodDefinition #(#'Author class' #useAuthor:during: #true)) #'2020-06-15T21:10:09.714675+02:00') )
 ]

@@ -27,7 +27,7 @@ OCASTTranslatorTest >> compilationContext [
 	| context |
 	context := CompilationContext new
 		encoderClass: self encoder;
-		environment: globals;
+		bindings: globals;
 		interactive: true;
 		yourself.
 	fullblocks ifTrue: [ context setOptions: { #optionFullBlockClosure . optimization } ].
@@ -153,7 +153,7 @@ OCASTTranslatorTest >> setUp [
 
 	super setUp.
 	instance := OCOpalExamples new.
-	globals := Dictionary new.
+	globals := SystemDictionary new.
 ]
 
 { #category : #running }
@@ -184,39 +184,26 @@ OCASTTranslatorTest >> testExample: aSelector withArguments: arguments [
 
 { #category : #'testing - primitives' }
 OCASTTranslatorTest >> testExamplePrimitiveErrorCode [
-	| method ast ir newMethod |
-	method := (OCOpalExamples>>#examplePrimitiveErrorCode).
+	| ast ir newMethod |
+	method := OCOpalExamples >> #examplePrimitiveErrorCode.
 	ast := method parseTree.
 	ir := (ast doSemanticAnalysisIn: OCOpalExamples) ir.
 
 	newMethod := ir compiledMethod.
-	self assert: method primitive = newMethod primitive. 
-
-	
-
-	
-	
-
-	
+	self assert: method primitive equals: newMethod primitive
 ]
 
 { #category : #'testing - primitives' }
 OCASTTranslatorTest >> testExamplePrimitiveErrorCodeModule [
-	| method ast ir newMethod |
-	method := (OCOpalExamples>>#examplePrimitiveErrorCodeModule).
+	| ast ir newMethod |
+	method := OCOpalExamples >> #examplePrimitiveErrorCodeModule.
 	ast := method parseTree.
 	ir := (ast doSemanticAnalysisIn: OCOpalExamples) ir.
 
 	newMethod := ir compiledMethod.
-	
-	self assert: method primitive = newMethod primitive. 
-	self assert: method pragmas printString  = newMethod pragmas printString
-	
 
-	
-	
-
-	
+	self assert: method primitive equals: newMethod primitive.
+	self assert: method pragmas printString equals: newMethod pragmas printString
 ]
 
 { #category : #'testing - primitives' }
@@ -224,7 +211,7 @@ OCASTTranslatorTest >> testExamplePrimitiveErrorModule [
 "test for primitive declaration
   <primitive: 'primFunction'  error: errorCode module: 'primModule'  >
 "
-	| method ast ir |
+	| ast ir |
 	method := OCOpalExamples >> #examplePrimitiveErrorModule.
 	ast := method parseTree.
 	ir := (ast doSemanticAnalysisIn: OCOpalExamples) ir.
@@ -236,7 +223,7 @@ OCASTTranslatorTest >> testExamplePrimitiveModuleError [
 "teset for primitive declaration
   <primitive: 'primFunction'  module: 'primModule' error: errorCode >
 "
-	| method ast ir |
+	| ast ir |
 	method := OCOpalExamples >> #examplePrimitiveModuleError.
 	ast := method parseTree.
 	ir := (ast doSemanticAnalysisIn: OCOpalExamples) ir.

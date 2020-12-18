@@ -98,6 +98,8 @@ Collection class >> withAll: aCollection [
 
 { #category : #enumerating }
 Collection >> & aCollection [
+	"#(1 2 3 4) & #(1 2 4 6 7) >>> #(1 2 4)"
+	
 	^ self intersection: aCollection
 ]
 
@@ -111,6 +113,9 @@ Collection >> , aCollection [
 
 { #category : #enumerating }
 Collection >> \ aCollection [
+	"Return all the elements in self that are not in aCollection"
+	"'abc' \ 'cbe' >>> 'a'."
+	
 	^ self difference: aCollection
 ]
 
@@ -167,6 +172,12 @@ Collection >> addAll: aCollection [
 ]
 
 { #category : #adding }
+Collection >> addAssignToFloatArray: aFloatArray [
+	1 to: aFloatArray size do: [ :i | aFloatArray at: i put: (aFloatArray at: i) + (self at: i) ].
+	^ aFloatArray
+]
+
+{ #category : #adding }
 Collection >> addIfNotPresent: anObject [
 	"Include anObject as one of the receiver's elements, but only if there
 	is no such element already. Anwser anObject."
@@ -180,6 +191,8 @@ Collection >> allSatisfy: aBlock [
 	"Evaluate aBlock with the elements of the receiver.
 	If aBlock returns false for any element return false.
 	Otherwise return true."
+	"#(1 2) allSatisfy: [ :each | each even ] >>> false"
+	"#(2 4) allSatisfy: [ :each | each even ] >>> true"
 
 	self do: [:each | (aBlock value: each) ifFalse: [^ false]].
 	^ true
@@ -202,6 +215,8 @@ Collection >> anySatisfy: aBlock [
 	"Evaluate aBlock with the elements of the receiver.
 	If aBlock returns true for any element return true.
 	Otherwise return false."
+	"#(1 3) anySatisfy: [ :each | each even ] >>> false"
+	"#(1 2) anySatisfy: [ :each | each even ] >>> true"
 
 	self do: [:each | (aBlock value: each) ifTrue: [^ true]].
 	^ false
@@ -310,7 +325,7 @@ Collection >> asSortedCollection [
 
 { #category : #converting }
 Collection >> asSortedCollection: aSortBlock [ 
-	"Answer a SortedCollection whose elements are the elements of the receiver. The sort order is defined by the argument, aSortBlock. Note that this is better to use #sorted: if you don't really need a SortedCollection, but a sorted collection!!"
+	"Answer a SortedCollection whose elements are the elements of the receiver. The sort order is defined by the argument, aSortBlock. Note that it is better to use #sorted: if you don't really need a SortedCollection, but a sorted collection!!"
 
 	| aSortedCollection |
 	aSortedCollection := SortedCollection new: self size.
@@ -416,7 +431,7 @@ Collection >> collect: collectBlock thenSelect: selectBlock [
 
 { #category : #testing }
 Collection >> contains: aBlock [
-	"VW compatibility"
+	"For compatibility, please use #anySatisfy: instead!"
 	^self anySatisfy: aBlock
 ]
 
@@ -479,6 +494,7 @@ Collection >> copyWithoutDuplicates [
 Collection >> count: aBlock [ 
 	"Evaluate aBlock with each of the receiver's elements as the argument.  
 	Answer the number of elements that answered true."
+	"#(1 2 3 4) count: [ :each | each even ] >>> true"
 
 	| sum |
 	sum := 0.
@@ -490,6 +506,7 @@ Collection >> count: aBlock [
 Collection >> detect: aBlock [ 
 	"Evaluate aBlock with each of the receiver's elements as the argument. 
 	Answer the first element for which aBlock evaluates to true."
+	"(#(1 2 3 4) detect: [ :each | each even ]) >>> 2"
 
 	^ self detect: aBlock ifNone: [self errorNotFound: aBlock]
 ]
@@ -501,6 +518,8 @@ Collection >> detect: aBlock ifFound: foundBlock [
 	foundBlock. 
 	If no element matches the criteria then do nothing.
 	Always returns self to avoid misuse and a potential isNil check on the sender."
+	"(#(1 2) detect: [ :each | each even ] ifFound: [ ^'yay!' ]) >>> 'yay'"
+	"(#(1 3) detect: [ :each | each even ] ifFound: [ ^'yay!' ]) >>> #(1 3)"
 
 	self
 		detect: aBlock
@@ -558,7 +577,12 @@ Collection >> detectMax: aBlock [
 Collection >> detectMin: aBlock [
 	"Evaluate aBlock with each of the receiver's elements as the argument. 
 	Answer the element for which aBlock evaluates to the lowest number.
-	If collection empty, return nil."
+	If collection empty, return nil.
+	
+	Example of use:
+	({ 2@3 . -4@6 . 10@ -3 } detectMin: [ :p | p x ]) >>> (-4@6)
+	({ 2@3 . -4@6 . 10@ -3 } detectMin: [ :p | p y ]) >>> (10@ -3)
+	"
 
 	| minElement minValue |
 	self do: [:each | | val | 
@@ -632,6 +656,17 @@ Collection >> do: aBlock without: anItem [
 	^ self do: [:each | anItem = each ifFalse: [aBlock value: each]]
 ]
 
+{ #category : #enumerating }
+Collection >> doWithIndex: elementAndIndexBlock [
+	"Use the new version with consistent naming
+	
+	Example of use:
+	(#('hello' 'world' 'bonjour') doWithIndex: [ :element :index |  ])
+	"
+
+	^ self withIndexDo: elementAndIndexBlock
+]
+
 { #category : #private }
 Collection >> emptyCheck [
 
@@ -650,13 +685,6 @@ Collection >> errorNotFound: anObject [
 	"Raise a NotFound exception."
 
 	NotFound signalFor: anObject
-]
-
-{ #category : #private }
-Collection >> errorNotKeyed [
-
-	self error: ('Instances of {1} do not respond to keyed accessing messages.' format: {self class name})
-
 ]
 
 { #category : #private }
@@ -723,9 +751,7 @@ Collection >> flatCollectAsSet: aBlock [
 { #category : #enumerating }
 Collection >> flattenOn: aStream [
 
-	self do: [ :each | (each isCollection and: [each isString not]) 
-						ifTrue: [each flattenOn: aStream]
-						ifFalse: [aStream nextPut: each]].
+	self do: [ :each | each flattenOn: aStream ]
 ]
 
 { #category : #enumerating }
@@ -754,7 +780,13 @@ Collection >> gather: aBlock [
 
 { #category : #enumerating }
 Collection >> groupedBy: aBlock [
-	"Answer a dictionary whose keys are the result of evaluating aBlock for all my elements, and the value for each key is the selection of my elements that evaluated to that key. Uses species."
+	"Answer a dictionary whose keys are the result of evaluating aBlock for all my elements, and the value for each key is the selection of my elements that evaluated to that key. Uses species.
+	
+	Example of use:
+	(#(1 2 3 4 5) groupedBy: [ :v | v odd ]) asString >>> 'an OrderedDictionary(true->#(1 3 5) false->#(2 4))'
+	"
+	
+	
 	
 	| groups |
 	groups := OrderedDictionary new.
@@ -801,10 +833,10 @@ Collection >> identityIncludes: anObject [
 { #category : #testing }
 Collection >> ifEmpty: aBlock [
 	"Evaluate the given block, answering its value if the receiver is empty, otherwise answer the receiver."
-	
+
 	"Note that the fact that this method returns its receiver in case the receiver is not empty allows one to write expressions like the following ones: self classifyMethodAs: (myProtocol ifEmpty: ['As yet unclassified'])"
 
-	^ self isEmpty 
+	^ self isEmpty
 		ifTrue: [ aBlock value ]
 		ifFalse: [ self ]
 ]
@@ -812,10 +844,11 @@ Collection >> ifEmpty: aBlock [
 { #category : #testing }
 Collection >> ifEmpty: emptyBlock ifNotEmpty: notEmptyBlock [
 	"Evaluate emptyBlock if I'm empty, notEmptyBlock otherwise"
-	" If the notEmptyBlock has an argument, eval with the receiver as its argument"
+	"If the notEmptyBlock has an argument, eval with the receiver as its argument"
 
-	self isEmpty ifTrue: [ ^emptyBlock value ].
-	^notEmptyBlock cull: self
+	^ self isEmpty
+		ifTrue: [ emptyBlock value ]
+		ifFalse: [ notEmptyBlock cull: self ]
 ]
 
 { #category : #testing }
@@ -823,10 +856,9 @@ Collection >> ifNotEmpty: aBlock [
 	"Evaluate the given block with the receiver as argument, answering its value
     unless the receiver is empty, in which case answer the receiver."
 
-    ^self isEmpty
-          ifTrue: [self]
-          ifFalse: [aBlock cull: self] 
-
+	^ self isEmpty
+		ifTrue: [ self ]
+		ifFalse: [ aBlock cull: self ]
 ]
 
 { #category : #testing }
@@ -834,8 +866,9 @@ Collection >> ifNotEmpty: notEmptyBlock ifEmpty: emptyBlock [
 	"Evaluate emptyBlock if I'm empty, notEmptyBlock otherwise
 	 If the notEmptyBlock has an argument, eval with the receiver as its argument"
 
-	self isEmpty ifFalse: [ ^notEmptyBlock cull: self ].
-	^emptyBlock value
+	^ self isEmpty
+		ifTrue: [ emptyBlock value ]
+		ifFalse: [ notEmptyBlock cull: self ]
 ]
 
 { #category : #testing }
@@ -941,7 +974,13 @@ Collection >> isEmptyOrNil [
 
 { #category : #testing }
 Collection >> isNotEmpty [
-	"Answer whether the receiver contains any elements."
+	"Answer whether the receiver contains any elements.
+	
+	Example of use:
+	
+	#() isNotEmpty >>> false
+	#(1 2 3) isNotEmpty >>> true
+	"
 
 	^ self isEmpty not
 ]
@@ -953,8 +992,13 @@ Collection >> isSequenceable [
 
 { #category : #'math functions' }
 Collection >> median [
-	"Return the middle element, or as close as we can get."
-	"{1 . 2 . 3 . 4 . 5} median >>> 3"
+	"Return the middle element, or as close as we can get.
+	
+	Example of use:
+	{1 . 2 . 3 . 4 . 5} median >>> 3
+	{1 . 2 . 4 . 5} median >>> 3
+	{1 . 2 . 5 . 5} median >>> (7/2)
+	"
 	
 	^ self asSortedCollection median
 ]
@@ -975,7 +1019,7 @@ Collection >> notEmpty [
 	^ self isEmpty not
 ]
 
-{ #category : #testing }
+{ #category : #enumerating }
 Collection >> occurrencesOf: anObject [ 
 	"Answer how many of the receiver's elements are equal to anObject."
 
@@ -983,40 +1027,6 @@ Collection >> occurrencesOf: anObject [
 	tally := 0.
 	self do: [:each | anObject = each ifTrue: [tally := tally + 1]].
 	^tally
-]
-
-{ #category : #enumerating }
-Collection >> piecesCutWhere: binaryBlock [
-	"Answer substrings of the receiver derived from cutting the receiver at points where binaryBlock answers true for adjacent elements."
-	"( #(1 2 3 1 6 1 2 3 4) piecesCutWhere: [ :a :b | a = 1 and: [ b = 2]]) asArray >>> #(#(1) #(2 3 1 6 1) #(2 3 4))"
-	| pieces |
-	pieces := OrderedCollection new.
-	self 
-		piecesCutWhere: binaryBlock
-		do: [ :piece | pieces add: piece ].
-	^pieces
-
-   "'Now is the time for all good people to come to the aid of the cause of world peace.  It is just fine, even desirable, to love your country, if that means wanting it to play a beneficial role in the course of world events and be the best possible example of a good society.  But if it means wanting dominion over the rest of the world, it is not love but defensiveness or self-glorification, and will lead only to oblivion.'  piecesCutWhere: [:a :b| a = $. and: [b isSeparator]]"
-]
-
-{ #category : #enumerating }
-Collection >> piecesCutWhere: binaryBlock do: pieceBlock [
-	"Evaluate pieceBlock with substrings of the receiver derived from cutting the receiver at points where binaryBlock answers true for adjacent elements."
-
-	| size lastCut this next |
-	(size := self size) <= 1 ifTrue:
-		 [size = 1 ifTrue: [pieceBlock value: self].
-		^self].
-	lastCut := 1.
-	this := self at: 1.
-	2 to: size do:
-		[:i|
-		next := self at: i.
-		(binaryBlock value: this value: next) ifTrue:
-			[pieceBlock value: (self copyFrom: lastCut to: i - 1).
-			lastCut := i].
-		this := next].
-	pieceBlock value: (self copyFrom: lastCut to: size)
 ]
 
 { #category : #printing }
@@ -1225,18 +1235,6 @@ comparison."
 	^self asArray sort: aSortBlockOrNil
 ]
 
-{ #category : #'math functions' }
-Collection >> stdev [
-	| avg sample sum |
-	"In statistics, the standard deviation is a measure that is used to quantify the amount of variation or dispersion of a set of data values.
-	For details about implementation see comment in self sum."
-	avg := self average.
-	sample := self anyOne.
-	sum := self inject: sample into: [ :accum :each | accum + (each - avg) squared ].
-	sum := sum - sample.
-	^ (sum / (self size - 1)) sqrt
-]
-
 { #category : #printing }
 Collection >> storeOn: aStream [ 
 	"Refer to the comment in Object|storeOn:."
@@ -1264,10 +1262,25 @@ Collection >> sum: aBlock [
 	number line, i.e. whether 0 is a good initial value for the sum. 
 	Consider a collection of measurement objects, 0 would be the unitless 
 	value and would not be appropriate to add with the unit-ed objects."
+	^ self sum: aBlock ifEmpty: [ 0 ]
+]
+
+{ #category : #'math functions' }
+Collection >> sum: aBlock ifEmpty: anEmptySumBlock [
+	"This is implemented using a variant of the normal inject:into: pattern. 
+	The reason for this is that it is not known whether we're in the normal 
+	number line, i.e. whether 0 is a good initial value for the sum. 
+	Consider a collection of measurement objects, 0 would be the unitless 
+	value and would not be appropriate to add with the unit-ed objects."
 	| sum sample |
-	sample := aBlock value: self anyOne.
-	sum := self inject: sample into: [ :previousValue :each |  previousValue + (aBlock value: each) ].
-	^ sum - sample
+	
+	^ self
+		ifNotEmpty: [ 
+			sample := aBlock value: self anyOne.
+			sum := self inject: sample into: [ :previousValue :each |
+				previousValue + (aBlock value: each) ].
+			sum - sample ]
+		ifEmpty: anEmptySumBlock.
 ]
 
 { #category : #'math functions' }
@@ -1309,6 +1322,15 @@ Collection >> union: aCollection [
 	^ self species withAll: set asArray
 ]
 
+{ #category : #enumerating }
+Collection >> withIndexDo: elementAndIndexBlock [
+	"Just like do: except that the iteration index supplies the second argument to the block"
+	"Support collection enumeration with a counter, even though not ordered"
+	| index |
+	index := 0.
+	self do: [:item | elementAndIndexBlock value: item value: (index := index+1)]
+]
+
 { #category : #deprecated }
 Collection >> write: anObject [
 
@@ -1321,5 +1343,8 @@ Collection >> write: anObject [
 
 { #category : #enumerating }
 Collection >> | aCollection [
+	"Return all the elements that appear in self or in aCollection"
+	"'abc' | 'cbe' >>> 'bcea'"
+	
 	^ self union: aCollection
 ]

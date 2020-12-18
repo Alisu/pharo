@@ -24,7 +24,7 @@ RBAbstractClassVariableTest >> testAbstractClassVariable [
 	self assert: (meta parseTreeFor: #nuke) equals: (self parseMethod: 'nuke
 							self recursiveSelfRule: nil').
 	self assert: (meta parseTreeFor: #initializeAfterLoad1) equals: (self parseMethod: 'initializeAfterLoad1
-							self recursiveSelfRule: RBParseTreeSearcher new.
+							self recursiveSelfRule: self parseTreeSearcher.
 							self recursiveSelfRule
 								addMethodSearches: #(''`@methodName: `@args | `@temps | self `@methodName: `@args'' ''`@methodName: `@args | `@temps | ^self `@methodName: `@args'')
 										-> [:aNode :answer | true]').
@@ -43,6 +43,13 @@ RBAbstractClassVariableTest >> testInheritedName [
 	self shouldFail: (RBAbstractClassVariableRefactoring 
 			variable: #DependentsFields
 			class: RBBasicLintRuleTestData)
+]
+
+{ #category : #'failure tests' }
+RBAbstractClassVariableTest >> testInvalidClass [
+	self shouldFail: (RBAbstractClassVariableRefactoring 
+			variable: #DependentsFields
+			class: Object)
 ]
 
 { #category : #'failure tests' }

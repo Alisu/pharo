@@ -7,8 +7,7 @@ CompiledMethod.
 I know my method class (a RBClass or RBMetaclass). 
 You should not directly create instances of me but query or create a method from a RBClass.
 
-I only implement a small part of  CompiledMethod interface, that is used for refactoring operations, like
-querying symbols, literals or the whole method source.
+I only implement a small part of  CompiledMethod interface, that is used for refactoring operations, like querying symbols, literals or the whole method source.
 
 "
 Class {
@@ -143,7 +142,7 @@ RBMethod >> refersToSymbol: aSymbol [
 		matches: '`#literal'
 			do:
 				[ :node :answer | answer or: [ self literal: node value containsReferenceTo: aSymbol ] ].
-	(RBScanner isSelector: aSymbol)
+	aSymbol isValidSelector
 		ifTrue: [ searcher
 				matches:
 					'`@object '

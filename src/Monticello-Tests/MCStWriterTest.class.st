@@ -21,15 +21,15 @@ MCStWriterTest >> assertChunkIsWellFormed: chunk [
 		class: UndefinedObject;
 		noPattern: true;
 		failBlock:  [self assert: false];
-		compile.
+		compile
 ]
 
 { #category : #asserting }
-MCStWriterTest >> assertContentsOf: strm match: expected [ 
+MCStWriterTest >> assertContentsOf: strm match: expected [
 	| actual |
 	actual := strm contents.
-	self assert: actual size = expected size.
-	actual with: expected do: [:a :e | self assert: a = e]
+	self assert: actual size equals: expected size.
+	actual with: expected do: [ :a :e | self assert: a equals: e ]
 ]
 
 { #category : #asserting }

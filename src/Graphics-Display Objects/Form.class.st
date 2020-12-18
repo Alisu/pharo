@@ -182,12 +182,10 @@ Form class >> fromDisplay: aRectangle [
 Form class >> fromDisplay: aRectangle using: oldForm [
 	"Like fromDisplay: only if oldForm is the right size, copy into it and answer it instead."
 
-	((oldForm ~~ nil) and: [oldForm extent = aRectangle extent])
-		ifTrue:
-			[oldForm fromDisplay: aRectangle.
-			 ^ oldForm]
-		ifFalse:
-			[^ self fromDisplay: aRectangle]
+	^ (oldForm ~~ nil and: [ oldForm extent = aRectangle extent ])
+		ifTrue: [ oldForm fromDisplay: aRectangle.
+			oldForm ]
+		ifFalse: [ self fromDisplay: aRectangle ]
 ]
 
 { #category : #'instance creation' }
@@ -277,18 +275,13 @@ Form >> allocateForm: extentPoint [
 	^Form extent: extentPoint depth: self nativeDepth
 ]
 
-{ #category : #filling }
-Form >> anyShapeFill [
-	"Fill the interior of the outermost outlined region in the receiver, a 1-bit deep form.  Typically the resulting form is used with fillShape:fillColor: to paint a solid color.  See also convexShapeFill:"
-
-	| shape |
-	"Draw a seed line around the edge and fill inward from the outside."
-	shape := self findShapeAroundSeedBlock: [:f | f borderWidth: 1].
-	"Reverse so that this becomes solid in the middle"
-	shape := shape reverse.
-	"Finally erase any bits from the original so the fill is only elsewhere"
-	shape copy: shape boundingBox from: self to: 0@0 rule: Form erase.
-	^ shape
+{ #category : #converting }
+Form >> alphaMultiplied [
+	^ (self asFormOfDepth: 32) collectColors: [ :c |
+		| a |
+		a := c alpha.
+		Color r: c red * a g: c green * a b: c blue * a alpha: a
+	]
 ]
 
 { #category : #converting }
@@ -385,9 +378,10 @@ Form >> asSourceForm [
 { #category : #'color mapping' }
 Form >> balancedPatternFor: aColor [
 	"Return the pixel word for representing the given color on the receiver"
-	self hasNonStandardPalette
-		ifTrue:[ ^ self bitPatternFor: aColor]
-		ifFalse:[^ self balancedPatternFor: aColor depth: self depth]
+
+	^ self hasNonStandardPalette
+		ifTrue: [ self bitPatternFor: aColor ]
+		ifFalse: [ self balancedPatternFor: aColor depth: self depth ]
 ]
 
 { #category : #'color mapping' }
@@ -466,10 +460,11 @@ Form >> balancedPatternFor: aColor depth: aDepth [
 { #category : #'color mapping' }
 Form >> bitPatternFor: aColor [
 	"Return the pixel word for representing the given color on the receiver"
-	aColor isColor ifFalse:[^aColor bitPatternForDepth: self depth].
-	self hasNonStandardPalette
-		ifTrue:[^Bitmap with: (self pixelWordFor: aColor)]
-		ifFalse:[^aColor bitPatternForDepth: self depth]
+
+	aColor isColor ifFalse: [ ^ aColor bitPatternForDepth: self depth ].
+	^ self hasNonStandardPalette
+		ifTrue: [ Bitmap with: (self pixelWordFor: aColor) ]
+		ifFalse: [ aColor bitPatternForDepth: self depth ]
 ]
 
 { #category : #filling }
@@ -497,7 +492,7 @@ Form >> bits: aBitmap [
 { #category : #accessing }
 Form >> bitsSize [
 	| pixPerWord |
-	depth == nil ifTrue: [depth := 1].
+	depth ifNil: [ depth := 1 ].
 	pixPerWord := 32 // self depth.
 	^ width + pixPerWord - 1 // pixPerWord * height
 ]
@@ -523,17 +518,6 @@ the border."
         blt height: rect height - borderWidth - borderWidth; width:
 borderWidth; copyBits.
         blt destX: rect corner x - borderWidth; copyBits
-]
-
-{ #category : #bordering }
-Form >> borderWidth: anInteger [ 
-	"Set the width of the border for the receiver to be anInteger and paint it 
-	using black as the border color."
-
-	self 
-		border: self boundingBox 
-		width: anInteger 
-		fillColor: Smalltalk ui theme borderColor
 ]
 
 { #category : #bordering }
@@ -653,7 +637,8 @@ Form >> colorReduced [
 { #category : #'color mapping' }
 Form >> colormapFromARGB [
 	"Return a ColorMap mapping from canonical ARGB space into the receiver.
-	Note: This version is optimized for Squeak forms."
+	Note: This version is optimized for image forms."
+	
 	| map nBits |
 	self hasNonStandardPalette 
 		ifTrue:[^ColorMap mappingFromARGB: self rgbaBitMasks].
@@ -688,9 +673,10 @@ Form >> colormapFromARGB [
 { #category : #'color mapping' }
 Form >> colormapIfNeededFor: destForm [
 	"Return a ColorMap mapping from the receiver to destForm."
-	(self hasNonStandardPalette or:[destForm hasNonStandardPalette]) 
-		ifTrue:[^self colormapFromARGB mappingTo: destForm colormapFromARGB]
-		ifFalse:[^self colormapIfNeededForDepth: destForm depth]
+
+	^ (self hasNonStandardPalette or: [ destForm hasNonStandardPalette ])
+		ifTrue: [ self colormapFromARGB mappingTo: destForm colormapFromARGB ]
+		ifFalse: [ self colormapIfNeededForDepth: destForm depth ]
 ]
 
 { #category : #'color mapping' }
@@ -984,8 +970,8 @@ Form >> displayScaledOn: aForm [
 { #category : #accessing }
 Form >> displayScreen [
 	"Return the display screen the receiver is allocated on. 
-	Forms in general are Squeak internal and not allocated on any particular display."
-	^nil
+	Forms in general are internal and not allocated on any particular display."
+	^ nil
 ]
 
 { #category : #analyzing }
@@ -1394,7 +1380,7 @@ Form >> hasBeenModified: aBool [
 Form >> hasNonStandardPalette [
 	"Return true if the receiver has a non-standard palette.
 	Non-standard means that RGBA components may be located
-	at positions differing from the standard Squeak RGBA layout
+	at positions differing from the standard Pharo RGBA layout
 	at the receiver's depth."
 	^false
 ]
@@ -1404,7 +1390,7 @@ Form >> height [
 	^ height
 ]
 
-{ #category : #'filein/out' }
+{ #category : #'file in/out' }
 Form >> hibernate [
 	"Replace my bitmap with a compactly encoded representation (a ByteArray).  It is vital that BitBlt and any other access to the bitmap (such as writing to a file) not be used when in this state.  Since BitBlt will fail if the bitmap size is wrong (not = bitsSize), we do not allow replacement by a byteArray of the same (or larger) size."
 
@@ -1455,6 +1441,15 @@ Form >> innerPixelRectFor: pv orNot: not [
 	^ ((xTally findFirst: [:t | t>0]) - 1) @ ((yTally findFirst: [:t | t>0]) - 1)
 		corner:
 			(xTally findLast: [:t | t>0])@(yTally findLast: [:t | t>0])
+]
+
+{ #category : #converting }
+Form >> invertedAndAlphaMultiplied [
+	^ (self asFormOfDepth: 32) collectColors: [ :c |
+		| a |
+		a := c alpha.
+		Color r: (1.0 - c red) * a g: (1.0 - c green) * a b: (1.0 - c blue) * a alpha: a
+	]
 ]
 
 { #category : #testing }
@@ -1861,21 +1856,22 @@ Form >> pixelValueAt: aPoint put: pixelValue [
 { #category : #'color mapping' }
 Form >> pixelValueFor: aColor [
 	"Return the pixel word for representing the given color on the receiver"
-	self hasNonStandardPalette
-		ifTrue:[^self colormapFromARGB mapPixel: (aColor pixelValueForDepth: 32)]
-		ifFalse:[^aColor pixelValueForDepth: self depth]
+
+	^ self hasNonStandardPalette
+		ifTrue: [ self colormapFromARGB mapPixel: (aColor pixelValueForDepth: 32) ]
+		ifFalse: [ aColor pixelValueForDepth: self depth ]
 ]
 
 { #category : #'color mapping' }
 Form >> pixelWordFor: aColor [
 	"Return the pixel word for representing the given color on the receiver"
+
 	| basicPattern |
-	self hasNonStandardPalette 
-		ifFalse:[^aColor pixelWordForDepth: self depth].
+	self hasNonStandardPalette ifFalse: [ ^ aColor pixelWordForDepth: self depth ].
 	basicPattern := self pixelValueFor: aColor.
-	self depth = 32 
-		ifTrue:[^basicPattern]
-		ifFalse:[^aColor pixelWordFor: self depth filledWith: basicPattern]
+	^ self depth = 32
+		ifTrue: [ basicPattern ]
+		ifFalse: [ aColor pixelWordFor: self depth filledWith: basicPattern ]
 ]
 
 { #category : #other }
@@ -1947,7 +1943,7 @@ Form >> privateFloodFillValue: aColor [
 	^f2 pixelValueAt: 0@0.
 ]
 
-{ #category : #'filein/out' }
+{ #category : #'file in/out' }
 Form >> readAttributesFrom: aBinaryStream [
 	| offsetX offsetY |
 	depth := aBinaryStream next.
@@ -1964,7 +1960,7 @@ Form >> readAttributesFrom: aBinaryStream [
 
 ]
 
-{ #category : #'filein/out' }
+{ #category : #'file in/out' }
 Form >> readBitsFrom: aBinaryStream [
 	
 	bits := Bitmap newFromStream: aBinaryStream.
@@ -1973,7 +1969,7 @@ Form >> readBitsFrom: aBinaryStream [
 
 ]
 
-{ #category : #'filein/out' }
+{ #category : #'file in/out' }
 Form >> readFrom: aBinaryStream [
 	"Reads the receiver from the given binary stream with the format:
 		depth, extent, offset, bits."
@@ -1981,7 +1977,7 @@ Form >> readFrom: aBinaryStream [
 	self readBitsFrom: aBinaryStream
 ]
 
-{ #category : #'filein/out' }
+{ #category : #'file in/out' }
 Form >> readFromOldFormat: aBinaryStream [
 	"Read a Form in the original ST-80 format."
 
@@ -2002,39 +1998,6 @@ Form >> readFromOldFormat: aBinaryStream [
 	newForm bits: theBits.
 	^ newForm
 
-]
-
-{ #category : #resources }
-Form >> readResourceFrom: aStream [ 
-	"Store a resource representation of the receiver on aStream.
-	Must be specific to the receiver so that no code is filed out."
-
-	| bitsSize msb |
-	(aStream next: 4) asString = self resourceTag 
-		ifFalse: 
-			[aStream position: aStream position - 4.
-			^self readNativeResourceFrom: aStream].
-	width := aStream nextNumber: 4.
-	height := aStream nextNumber: 4.
-	depth := aStream nextNumber: 4.
-	bitsSize := aStream nextNumber: 4.
-	bitsSize = 0 
-		ifFalse: 
-			[bits := aStream next: bitsSize.
-			^self].
-	msb := (aStream nextNumber: 4) = 1.
-	bitsSize := aStream nextNumber: 4.
-	bits := Bitmap new: self bitsSize.
-	(Form 
-		extent: width @ height
-		depth: depth
-		bits: (aStream next: bitsSize * 4)) displayOn: self.
-	msb = EndianDetector isBigEndian 
-		ifFalse: 
-			[Bitmap 
-				swapBytesIn: bits
-				from: 1
-				to: bits size]
 ]
 
 { #category : #analyzing }
@@ -2149,7 +2112,7 @@ Form >> relativeTextAnchorPosition [
 	^nil		"so forms can be in TextAnchors"
 ]
 
-{ #category : #'filein/out' }
+{ #category : #'file in/out' }
 Form >> replaceByResource: aForm [
 	"Replace the receiver by some resource that just got loaded"
 	(self extent = aForm extent and:[self depth = aForm depth]) ifTrue:[
@@ -2181,11 +2144,6 @@ Form >> replaceColor: oldColor withColor: newColor [
 		copyBits.
 	newColor = Color transparent 
 		ifTrue: [target displayOn: self].
-]
-
-{ #category : #resources }
-Form >> resourceTag [
-	^'FORM'
 ]
 
 { #category : #'color mapping' }
@@ -2294,13 +2252,6 @@ f display
 ]
 
 { #category : #'scaling, rotation' }
-Form >> scaledByDisplayScaleFactor [
-	
-	^ self scaledToSize: self extent * self currentWorld displayScaleFactor.
-
-]
-
-{ #category : #'scaling, rotation' }
 Form >> scaledToSize: newExtent [
 
 	| scale |
@@ -2391,7 +2342,7 @@ Form >> smear: dir distance: dist [
 		skew := skew+skew]
 ]
 
-{ #category : #'filein/out' }
+{ #category : #'file in/out' }
 Form >> store15To24HexBitsOn:aStream [
 
 	| buf lineWidth |
@@ -2429,17 +2380,17 @@ Form >> store15To24HexBitsOn:aStream [
 	].
 ]
 
-{ #category : #'filein/out' }
+{ #category : #'file in/out' }
 Form >> store32To24HexBitsOn:aStream [
 	^self storeBits:20 to:0 on:aStream.
 ]
 
-{ #category : #'filein/out' }
+{ #category : #'file in/out' }
 Form >> storeBits:startBit to:stopBit on:aStream [
 	bits storeBits:startBit to:stopBit on:aStream.
 ]
 
-{ #category : #'filein/out' }
+{ #category : #'file in/out' }
 Form >> storeBitsOn:aStream base:anInteger [
 	bits do: [:word | 
 		anInteger = 10
@@ -2449,18 +2400,18 @@ Form >> storeBitsOn:aStream base:anInteger [
 
 ]
 
-{ #category : #'filein/out' }
+{ #category : #'file in/out' }
 Form >> storeHexBitsOn:aStream [
 	^self storeBits:28 to:0 on:aStream.
 ]
 
-{ #category : #'filein/out' }
+{ #category : #'file in/out' }
 Form >> storeOn: aStream [
 
 	self storeOn: aStream base: 10
 ]
 
-{ #category : #'filein/out' }
+{ #category : #'file in/out' }
 Form >> storeOn: aStream base: anInteger [ 
 	"Store the receiver out as an expression that can be evaluated to recreate a Form with the same contents as the original."
 
@@ -2481,24 +2432,6 @@ Form >> storeOn: aStream base: anInteger [
 	aStream nextPutAll: 'offset: '.
 	self offset printOn: aStream.
 	aStream nextPut: $).
-
-]
-
-{ #category : #resources }
-Form >> storeResourceOn: aStream [
-	"Store a resource representation of the receiver on aStream.
-	Must be specific to the receiver so that no code is filed out."
-	self hibernate.
-	aStream nextPutAll: self resourceTag asByteArray. "tag"
-	aStream nextNumber: 4 put: width.
-	aStream nextNumber: 4 put: height.
-	aStream nextNumber: 4 put: depth.
-	(bits isMemberOf: ByteArray) ifFalse:
-		"must store bitmap"
-		[aStream nextNumber: 4 put: 0. "tag"
-		aStream nextNumber: 4 put: (EndianDetector isBigEndian ifTrue:[1] ifFalse: [0])].
-	aStream nextNumber: 4 put: bits size.
-	aStream nextPutAll: bits.
 
 ]
 
@@ -2568,7 +2501,7 @@ Form >> trimBordersOfColor: aColor [
 
 ]
 
-{ #category : #'filein/out' }
+{ #category : #'file in/out' }
 Form >> unhibernate [
 	"If my bitmap has been compressed into a ByteArray,
 	then expand it now, and return true."
@@ -2648,7 +2581,21 @@ Form >> wipeImage: otherImage at: topLeft delta: delta clippingBox: clipBox [
 			ifFalse: [nil]]
 ]
 
-{ #category : #'filein/out' }
+{ #category : #converting }
+Form >> withAlphaExtractedFromSubpixelRendering [
+	^ (self asFormOfDepth: 32) collectColors: [ :c |
+		| r g b a|
+		r := c red.
+		g := c green.
+		b := c blue.
+		a := c alpha.
+		a := ((r max: g) max: b) * a.
+		
+		Color r: r g: g b: b alpha: a
+	]
+]
+
+{ #category : #'file in/out' }
 Form >> writeAttributesOn: file [
 	self unhibernate.
 	file nextPut: depth.
@@ -2663,12 +2610,12 @@ Form >> writeAttributesOn: file [
 	
 ]
 
-{ #category : #'filein/out' }
+{ #category : #'file in/out' }
 Form >> writeBitsOn: file [
 	bits writeOn: file
 ]
 
-{ #category : #'filein/out' }
+{ #category : #'file in/out' }
 Form >> writeOn: file [
 	"Write the receiver on the file in the format
 		depth, extent, offset, bits."
@@ -2676,7 +2623,7 @@ Form >> writeOn: file [
 	self writeBitsOn: file
 ]
 
-{ #category : #'filein/out' }
+{ #category : #'file in/out' }
 Form >> writeUncompressedOn: file [
 	"Write the receiver on the file in the format depth, extent, offset, bits.  Warning:  Caller must put header info on file!  Use writeUncompressedOnFileNamed: instead."
 	self unhibernate.

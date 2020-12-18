@@ -4,7 +4,7 @@ I am the plugin implementing test runner for DrTests.
 Class {
 	#name : #DTTestsRunner,
 	#superclass : #DrTestsPlugin,
-	#category : #'DrTests-TestsRunner'
+	#category : #'DrTests-TestsRunner-Base'
 }
 
 { #category : #'api - accessing' }
@@ -36,14 +36,14 @@ DTTestsRunner >> buildConfigurationFrom: aDrTests [
 ]
 
 { #category : #api }
-DTTestsRunner >> buildContextualMenuGroupWith: presenterIntance [
+DTTestsRunner >> buildContextualMenuGroupWith: presenterInstance [
 	^ (CmCommandGroup named: 'TestRunnerResult context menu') asSpecGroup
 		description: 'Commands related to re-run a result.';
 		register:
-			(DTRerunCommand forSpec context: presenterIntance)
+			(DTRerunCommand forSpec context: presenterInstance)
 				beHiddenWhenCantBeRun;
 		register:
-			(DTDebugTestCommand forSpec context: presenterIntance)
+			(DTDebugTestCommand forSpec context: presenterInstance)
 				beHiddenWhenCantBeRun;
 		beDisplayedAsGroup;
 		yourself
@@ -59,9 +59,9 @@ DTTestsRunner >> handleReRunResult: rerunnedResult forConfiguration: aDTRerunCon
 	| oldResult |
 	oldResult := self
 		removeTests: aDTRerunConfiguration configurationToRun items
-		from: aDTRerunConfiguration previousResult testsResult.
+		from: aDTRerunConfiguration previousResult testResults.
 	^ self pluginResultClass new
-		testsResult: (self joinTestResult: oldResult with: rerunnedResult testsResult);
+		testResults: (self joinTestResult: oldResult with: rerunnedResult testResults);
 		yourself
 ]
 
@@ -85,7 +85,7 @@ DTTestsRunner >> label: aString forSuite: aTestSuite [
 
 { #category : #accessing }
 DTTestsRunner >> pragmaForResultTrees [
-	^ #'dTTestRunnerResultTreeNamed:'
+	^ #'dtTestRunnerResultTreeNamed:order:'
 ]
 
 { #category : #private }
@@ -115,7 +115,7 @@ DTTestsRunner >> resultButtonHelp [
 DTTestsRunner >> runForConfiguration: aDTpluginConfiguration [
 	| results |
 	results := self pluginResultClass new
-		testsResult: (self runTestSuites: { aDTpluginConfiguration asTestSuite });
+		testResults: (self runTestSuites: { aDTpluginConfiguration asTestSuite });
 		yourself.
 	^ aDTpluginConfiguration handleResults: results for: self
 ]
@@ -136,14 +136,18 @@ DTTestsRunner >> runSuite: aTestSuite withResult: aResult [
 ]
 
 { #category : #private }
-DTTestsRunner >> runTestSuites: testSuites [ 
-	|result|
+DTTestsRunner >> runTestSuites: testSuites [
+
+	| result |
 	result := TestAsserter classForTestResult new.
-	CurrentExecutionEnvironment runTestsBy: [
+	CurrentExecutionEnvironment runTestsBy: [ 
 		testSuites
-			do: [:testSuite | self runSuite: testSuite withResult: result ]
-			displayingProgress: 'Running Tests'
-	].
+			do: [ :testSuite | 
+				| specificResult |
+				specificResult := testSuite resultClass new.
+				self runSuite: testSuite withResult: specificResult.
+				result mergeWith: specificResult ]
+			displayingProgress: 'Running Tests' ].
 	^ result
 ]
 

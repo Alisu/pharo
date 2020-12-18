@@ -95,19 +95,6 @@ Workspace >> addModelItemsToWindowMenu: aMenu [
 	aMenu add: 'Save as...' target: self selector: #saveAsMenuAction.
 	aMenu lastItem icon: (self iconNamed: #smallSaveAsIcon).
 	aMenu addLine.
-	aMenu
-		add: 'Encoding'
-		subMenu:
-			([ :menu | 
-			TextConverter allEncodingNames
-				do: [ :ea | 
-					menu
-						addUpdating: #itemForEncoding:
-						target: self
-						selector: #useEncoding:
-						argumentList: {ea} ].
-			menu ] value: (UIManager default newMenuIn: self for: self)).
-	aMenu addLine.
 	aMenu add: 'Inspect variables' target: self selector: #browseBindings.
 	aMenu
 		add: 'Reset variables'
@@ -161,7 +148,7 @@ Workspace >> contents: aString [
 Workspace >> createTextView [
 	| v |
 	v := textModel newScrolledText
-		withRuler: RubWorkspaceBar new;
+		withRuler: RubWorkspaceBarRuler new;
 		beWrapped;
 		yourself.
 	v announcer when: RubTextAccepted send: #whenTextAccepted: to: self.
@@ -194,32 +181,15 @@ Workspace >> fileName: anObject [
 ]
 
 { #category : #'shout bindings' }
-Workspace >> guessTypeForName: aString [
-
-	| binding |
-
-	bindings
-		ifNotNil: [ binding := bindings at: aString ifAbsent: [ nil ].
-			binding ifNotNil: [ ^ binding class ]
-			].
-	^ nil
-]
-
-{ #category : #'shout bindings' }
 Workspace >> hasBindingOf: aString [ 
-	^(self guessTypeForName: aString) notNil
-]
-
-{ #category : #'shout bindings' }
-Workspace >> hasBindingThatBeginsWith: aString [
-	^ bindings keys anySatisfy: [:each | each beginsWith: aString]
+	^bindings includesKey: aString asSymbol
 ]
 
 { #category : #initialization }
 Workspace >> initialize [
 	super initialize.
 	textModel := self defaultTextModel.
-	encoding := TextConverter default class encodingNames first.
+	encoding := 'utf8'.
 	self initializeBindings
 ]
 
@@ -340,6 +310,11 @@ Workspace >> setBindings: aDictionary [
 
 	bindings := aDictionary.
 
+]
+
+{ #category : #accessing }
+Workspace >> sourceTextArea [
+	^ self textView
 ]
 
 { #category : #'file support' }

@@ -74,6 +74,12 @@ FTDataSource >> elementAt: rowIndex [
 	self subclassResponsibility
 ]
 
+{ #category : #testing }
+FTDataSource >> hasElementAt: index [ 
+
+	^ self numberOfRows >= index
+]
+
 { #category : #accessing }
 FTDataSource >> headerColumn: column [
 	"Answers a cell who will be the header of a column"
@@ -123,6 +129,12 @@ FTDataSource >> realElementAt: anIndex [
 	"I am here because some dataSource wrap there element into an other Object but we still want to access to the initial element. In that case a DataSource can override me to get the real element."
 
 	^ self elementAt: anIndex
+]
+
+{ #category : #accessing }
+FTDataSource >> rowHeight: roIndex [
+
+	^ self table rowHeight
 ]
 
 { #category : #accessing }

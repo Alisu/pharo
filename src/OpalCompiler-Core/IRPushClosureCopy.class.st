@@ -13,7 +13,6 @@ Class {
 		'blockSequence',
 		'tempMap',
 		'copiedValues',
-		'lastBlockSequence',
 		'arguments'
 	],
 	#category : #'OpalCompiler-Core-IR-Nodes'
@@ -32,11 +31,6 @@ IRPushClosureCopy >> arguments [
 { #category : #accessing }
 IRPushClosureCopy >> arguments: anArray [
 	arguments := anArray
-]
-
-{ #category : #private }
-IRPushClosureCopy >> blockHasTempVector: aSymbol [
-	^ blockSequence hasTempVector: aSymbol
 ]
 
 { #category : #accessing }
@@ -63,11 +57,6 @@ IRPushClosureCopy >> copiedValues: anArray [
 IRPushClosureCopy >> definedTemps [
 
 	^self tempMap keys copyWithoutAll: (arguments, copiedValues).
-]
-
-{ #category : #testing }
-IRPushClosureCopy >> hasTempVector: aSymbol [
-	^ (blockSequence hasTempVector: aSymbol) or:[sequence hasTempVector: aSymbol]
 ]
 
 { #category : #scoping }
@@ -99,16 +88,6 @@ IRPushClosureCopy >> isPushClosureCopy [
 ]
 
 { #category : #accessing }
-IRPushClosureCopy >> lastBlockSequence [ 
-	^lastBlockSequence
-]
-
-{ #category : #accessing }
-IRPushClosureCopy >> lastBlockSequence: aSequence [
-	lastBlockSequence := aSequence
-]
-
-{ #category : #accessing }
 IRPushClosureCopy >> nonBodySuccessorSequences [
 
 	^ {destination}
@@ -124,14 +103,10 @@ IRPushClosureCopy >> numArgs: aSmallInteger [
 	numArgs := aSmallInteger
 ]
 
-{ #category : #private }
-IRPushClosureCopy >> sequenceHasTempVector: aSymbol [
-	^ sequence hasTempVector: aSymbol
-]
-
-{ #category : #mapping }
-IRPushClosureCopy >> sourceNodeExecuted [
-	^self sourceNode parent
+{ #category : #scoping }
+IRPushClosureCopy >> remapCopiedValueAt: index oldOne: aTemp newOne: aRemote [
+	self copiedValues at: index put: aRemote.
+	self tempMap at: aRemote put: (self tempMap removeKey: aTemp)
 ]
 
 { #category : #accessing }
@@ -154,13 +129,4 @@ IRPushClosureCopy >> tempMap [
 IRPushClosureCopy >> tempVectorName [
 	self blockSequence do:[:irNode | irNode isTempVector ifTrue:[^irNode name]].
 	^nil.
-]
-
-{ #category : #accessing }
-IRPushClosureCopy >> tempVectorNamed: aName [
-    (self blockHasTempVector: aName)
-        ifTrue: [ ^ blockSequence tempVectorNamed: aName ].
-    (self sequenceHasTempVector: aName)
-                ifTrue: [ ^ sequence tempVectorNamed: aName ].
-    ^ nil
 ]

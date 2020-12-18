@@ -1,17 +1,9 @@
 "
-I'm a presenter to render a toolbar.
-I can receive any kind of ToolBarItemPresenters, even if the most frequent one is ToolBarButton.
+A presenter to display a toolbar.
 
-Toolbars can be displayed in diferent modes: 
-- icons and labels (default)
-- icons
-- labels
-
-And they can be placed at the left (default) or at the right. 
-Not all platforms support left/right alignments for toolbars. In that case they will be presented as simple groups.
 "
 Class {
-	#name : #SpToolBarPresenter,
+	#name : #SpToolbarPresenter,
 	#superclass : #SpAbstractWidgetPresenter,
 	#instVars : [
 		'#displayMode => SpObservableSlot',
@@ -22,77 +14,90 @@ Class {
 }
 
 { #category : #specs }
-SpToolBarPresenter class >> adapterName [
+SpToolbarPresenter class >> adapterName [
 
-	^ #ToolBarAdapter
+	^ #ToolbarAdapter
 ]
 
-{ #category : #convenience }
-SpToolBarPresenter >> addButtonLabel: aLabel iconNamed: anIconName help: aHelpString action: aBlock [
+{ #category : #documentation }
+SpToolbarPresenter class >> documentFactoryMethodSelector [
 
-	self addItem: (SpToolBarButton new
-		label: aLabel;
-		icon: (self application iconNamed: anIconName);
-		help: aHelpString;
-		action: aBlock;
-		yourself)
+	^ #newToolbar
 ]
 
-{ #category : #adding }
-SpToolBarPresenter >> addItem: aToolbarItem [
+{ #category : #api }
+SpToolbarPresenter >> add: aToolbarButtonPresenter [ 
+	"Add a toolbar button to the toolbar."
 	
-	self addItem: aToolbarItem position: SpToolBarItemPosition left
+	self addItem: aToolbarButtonPresenter
 ]
 
-{ #category : #adding }
-SpToolBarPresenter >> addItem: aToolbarItem position: aPosition [
+{ #category : #api }
+SpToolbarPresenter >> addItem: aToolbarItem [
+	"Add a toolbar button to the toolbar.
+	 This is a synonym of `SpToolbarPresenter>>#add:`"
+	
+	self addItem: aToolbarItem position: SpToolbarItemPosition left
+]
+
+{ #category : #private }
+SpToolbarPresenter >> addItem: aToolbarItem position: aPosition [
 	
 	aToolbarItem owner: self.
 	aPosition addItem: aToolbarItem into: self
 ]
 
-{ #category : #adding }
-SpToolBarPresenter >> addItemLeft: aToolBarItem [ 
+{ #category : #private }
+SpToolbarPresenter >> addItemLeft: aToolbarItem [ 
 	
-	aToolBarItem owner: self.
-	leftItems add: aToolBarItem.
+	aToolbarItem owner: self.
+	leftItems add: aToolbarItem.
 	self notifyPropertyChanged: #leftItems.
 ]
 
-{ #category : #adding }
-SpToolBarPresenter >> addItemRight: aToolBarItem [ 
+{ #category : #private }
+SpToolbarPresenter >> addItemRight: aToolbarItem [ 
 
-	aToolBarItem owner: self.
-	rightItems add: aToolBarItem.
+	aToolbarItem owner: self.
+	rightItems add: aToolbarItem.
 	self notifyPropertyChanged: #rightItems.	
 ]
 
-{ #category : #accessing }
-SpToolBarPresenter >> beBoth [
+{ #category : #api }
+SpToolbarPresenter >> beBoth [
+	"Set the toolbar to display both text and icons.
+	 See also `SpToolbarPresenter>>#displayMode:`"
 
-	self displayMode: SpToolBarDisplayMode modeIconAndLabel
+	self displayMode: SpToolbarDisplayMode modeIconAndLabel
 ]
 
-{ #category : #accessing }
-SpToolBarPresenter >> beIcons [
+{ #category : #api }
+SpToolbarPresenter >> beIcons [
+	"Set the toolbar to display just the icons.
+	See also `SpToolbarPresenter>>#displayMode:`"
 
-	self displayMode: SpToolBarDisplayMode modeIcon
+	self displayMode: SpToolbarDisplayMode modeIcon
 ]
 
-{ #category : #accessing }
-SpToolBarPresenter >> beText [
+{ #category : #api }
+SpToolbarPresenter >> beText [
+	"Set the toolbar to display just the labels.
+	 See also `SpToolbarPresenter>>#displayMode:`"
 
-	self displayMode: SpToolBarDisplayMode modeLabel
+	self displayMode: SpToolbarDisplayMode modeLabel
 ]
 
-{ #category : #accessing }
-SpToolBarPresenter >> displayMode [
+{ #category : #api }
+SpToolbarPresenter >> displayMode [
+	"Answer the display mode of the toolbar (an instance of `SpToolbarDisplayMode`"
 
 	^ displayMode
 ]
 
-{ #category : #accessing }
-SpToolBarPresenter >> displayMode: aDisplayMode [
+{ #category : #api }
+SpToolbarPresenter >> displayMode: aDisplayMode [
+	"Set the display mode of this toolbar. 
+	 `aDisplayMode` is an instance of `SpToolbarDisplayMode`"
 
 	displayMode ifNotNil: [ 
 		self removeStyle: displayMode styleName ].
@@ -102,7 +107,7 @@ SpToolBarPresenter >> displayMode: aDisplayMode [
 ]
 
 { #category : #initialization }
-SpToolBarPresenter >> initialize [
+SpToolbarPresenter >> initialize [
 
 	super initialize.
 	self beBoth.
@@ -112,66 +117,87 @@ SpToolBarPresenter >> initialize [
 ]
 
 { #category : #testing }
-SpToolBarPresenter >> isDisplayModeBoth [
+SpToolbarPresenter >> isDisplayModeBoth [
 
-	^ self displayMode = SpToolBarDisplayMode modeIconAndLabel
+	^ self displayMode = SpToolbarDisplayMode modeIconAndLabel
 ]
 
 { #category : #testing }
-SpToolBarPresenter >> isDisplayModeIcons [
+SpToolbarPresenter >> isDisplayModeIcons [
 
-	^ self displayMode = SpToolBarDisplayMode modeIcon
+	^ self displayMode = SpToolbarDisplayMode modeIcon
 ]
 
 { #category : #testing }
-SpToolBarPresenter >> isDisplayModeText [
+SpToolbarPresenter >> isDisplayModeText [
 
-	^ self displayMode = SpToolBarDisplayMode modeLabel
+	^ self displayMode = SpToolbarDisplayMode modeLabel
 ]
 
 { #category : #testing }
-SpToolBarPresenter >> isEmpty [
+SpToolbarPresenter >> isEmpty [
 	
 	^ self items isEmpty
 ]
 
-{ #category : #accessing }
-SpToolBarPresenter >> itemNamed: aString [ 
+{ #category : #private }
+SpToolbarPresenter >> itemNamed: aString [ 
 	
 	^ self items detect: [ :e | e label = aString ]
 ]
 
 { #category : #api }
-SpToolBarPresenter >> items [
+SpToolbarPresenter >> items [
+	"Answer all buttons in the toolbar"
 
 	^ leftItems , rightItems
 ]
 
-{ #category : #accessing }
-SpToolBarPresenter >> leftItems [
+{ #category : #private }
+SpToolbarPresenter >> leftItems [
 	^ leftItems
 ]
 
 { #category : #testing }
-SpToolBarPresenter >> notEmpty [
+SpToolbarPresenter >> notEmpty [
 
 	^ self isEmpty not
 ]
 
-{ #category : #removing }
-SpToolBarPresenter >> removeAllItems [
+{ #category : #'private-traversing' }
+SpToolbarPresenter >> presenters [
+
+	^ self items
+]
+
+{ #category : #'private-traversing' }
+SpToolbarPresenter >> presentersInFocusOrder [
+
+	^ self items
+]
+
+{ #category : #api }
+SpToolbarPresenter >> removeAllItems [
+	"Remove all items in the toolbar"
 
 	leftItems := OrderedCollection new.
 	rightItems := OrderedCollection new
 ]
 
-{ #category : #accessing }
-SpToolBarPresenter >> rightItems [
+{ #category : #private }
+SpToolbarPresenter >> rightItems [
 	^ rightItems
 ]
 
+{ #category : #'private-traversing' }
+SpToolbarPresenter >> traverseInFocusOrderDo: aBlock excluding: excludes [
+
+	self presentersInFocusOrder do: [ :each |
+		each traverseInFocusOrderDo: aBlock excluding: excludes ]
+]
+
 { #category : #events }
-SpToolBarPresenter >> whenItemsChangeDo: aBlockClosure [ 
+SpToolbarPresenter >> whenItemsChangeDo: aBlockClosure [ 
 	
 	self 
 		property: #leftItems whenChangedDo: aBlockClosure;

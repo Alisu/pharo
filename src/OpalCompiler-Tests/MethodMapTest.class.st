@@ -39,18 +39,12 @@ MethodMapTest >> parseExpression: aString [
 
 { #category : #'testing - ast mapping' }
 MethodMapTest >> testBlockAndContextSourceNode [
-		
-	|block blockNodeViaContext blockNodeViaClosure |
-
-
-	block := [blockNodeViaContext := thisContext sourceNode].
+	| block blockNodeViaContext blockNodeViaClosure |
+	block := [ blockNodeViaContext := thisContext sourceNode ].
 	block value.
 	blockNodeViaClosure := block sourceNode.
 
-	self assert: blockNodeViaContext == blockNodeViaClosure
-	
-
-
+	self assert: blockNodeViaContext identicalTo: blockNodeViaClosure
 ]
 
 { #category : #'testing - ast mapping' }
@@ -101,6 +95,11 @@ MethodMapTest >> testDeadContextSourceNode [
 ]
 
 { #category : #'testing - temp access' }
+MethodMapTest >> testExampleAccessOuterFromCleanBlock [
+	self assert: (self compileAndRunExample: #exampleAccessOuterFromCleanBlock) equals: 1
+]
+
+{ #category : #'testing - temp access' }
 MethodMapTest >> testExampleSimpleTemp [
 	self assert: (self compileAndRunExample: #exampleSimpleTemp) equals: 1
 ]
@@ -125,6 +124,13 @@ MethodMapTest >> testExampleTempNamedPutCopying2 [
 	"modifying a copied temp variable will modify the value in the outer context"
 
 	self assert: (self compileAndRunExample: #exampleTempNamedPutCopying2) equals: 2
+]
+
+{ #category : #'testing - temp access' }
+MethodMapTest >> testExampleTempNamedPutCopying3 [
+	"modifying a copied temp variable will modify the value in the outer context"
+
+	self assert: (self compileAndRunExample: #exampleTempNamedPutCopying3) equals: 2
 ]
 
 { #category : #'testing - temp access' }
@@ -192,12 +198,16 @@ MethodMapTest >> testPrimitiveMethodSourceNodeAtInitialPC [
 
 { #category : #'testing - temp access' }
 MethodMapTest >> testTempNamedTempCopyingNestedBlock [
-	self assert: (self compileAndRunExample:  #exampleTempNamedTempCopyingNestedBlock) equals: 1.
+	self
+		assert: (self compileAndRunExample: #exampleTempNamedTempCopyingNestedBlock)
+		equals: 1
 ]
 
 { #category : #'testing - temp access' }
-MethodMapTest >> testTempNamedTempCopyingNestedBlockPROBLEM [
-	self assert:  (self compileAndRunExample:  #exampleTempNamedTempCopyingNestedBlockPROBLEM) equals: 1.
+MethodMapTest >> testTempNamedTempCopyingNestedBlock2 [
+	self
+		assert: (self compileAndRunExample: #exampleTempNamedTempCopyingNestedBlock2)
+		equals: 1
 ]
 
 { #category : #'testing - ast mapping' }
@@ -213,7 +223,7 @@ MethodMapTest >> testThisContextSourceNode [
 { #category : #'testing - ast mapping' }
 MethodMapTest >> testThisContextSourceNodeInInlinedMessage [
 	| inlinedBlockSourceNode |
+	"we get the method node as this is what created the context"
 	inlinedBlockSourceNode := self inlinedBlockSourceNode.
-	self assert: (inlinedBlockSourceNode isKindOf: RBBlockNode).
-	self assert: inlinedBlockSourceNode equals: (self parseExpression: '[ :i | ^ thisContext sourceNode ]')
+	self assert: (inlinedBlockSourceNode isKindOf: RBMethodNode).
 ]
